@@ -42,6 +42,9 @@ struct dw9807_device {
 	struct v4l2_ctrl_handler ctrls_vcm;
 	struct v4l2_subdev sd;
 	u16 current_val;
+	bool standalone;
+	struct v4l2_device v4l2_dev;
+	struct i2c_client *client;
 };
 
 static inline struct dw9807_device *sd_to_dw9807_vcm(
@@ -124,13 +127,65 @@ static int dw9807_set_ctrl(struct v4l2_ctrl *ctrl)
 	return -EINVAL;
 }
 
+static int dw9807_get_volatile_ctrl(struct v4l2_ctrl *ctrl) {
+	struct dw9807_device *dev_vcm = container_of(ctrl->handler,
+		struct dw9807_device, ctrls_vcm);
+
+	if(ctrl->id == V4L2_CID_FOCUS_ABSOLUTE) {
+		struct i2c_client *client = v4l2_get_subdevdata(&dev_vcm->sd);
+		char tx_data[1] = { DW9807_MSB_ADDR }, rx_data[2] = {0};
+		int err = 0;
+
+		err = i2c_master_send(client, tx_data, sizeof(tx_data));
+		if(err < 0) {
+			dev_err(&client->dev, "%s: i2c_master_send() failed (err=%d)\n", __func__, err);
+			return err;
+		}
+
+		err = i2c_master_recv(client, rx_data, sizeof(rx_data));
+		if(err < 0) {
+			dev_err(&client->dev, "%s: i2c_master_recv() failed (err=%d)\n", __func__, err);
+			return err;
+		}
+
+		ctrl->val = (((rx_data[0] & 0x3) << 8) | rx_data[1]);
+		dev_vcm->current_val = ctrl->val;
+	}
+
+	return 0;
+}
+
+static int dw9807_try_ctrl(struct v4l2_ctrl *ctrl) {
+	return dw9807_set_ctrl(ctrl);
+}
+
 static const struct v4l2_ctrl_ops dw9807_vcm_ctrl_ops = {
 	.s_ctrl = dw9807_set_ctrl,
+	.g_volatile_ctrl = dw9807_get_volatile_ctrl,
+	.try_ctrl = dw9807_try_ctrl,
 };
 
 static int dw9807_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 {
-	return pm_runtime_resume_and_get(sd->dev);
+	struct dw9807_device *dw9807_dev = container_of(sd, struct dw9807_device, sd);
+	int err = 0;
+
+	err = pm_runtime_resume_and_get(sd->dev);
+	if(err < 0)
+		dev_err(sd->v4l2_dev->dev, "%s: pm_runtime_resume_and_get() failed (%d)\n", __func__, err);
+
+	if(dw9807_dev && dw9807_dev->standalone) {
+		// register settings to power on the device.
+		const char tx_data[2] = { DW9807_CTL_ADDR, 0x00 };
+
+		err = i2c_master_send(dw9807_dev->client, tx_data, sizeof(tx_data));
+		if(err < 0) {
+			dev_err(&dw9807_dev->client->dev, "%s: cannot power on device over i2c bus (%d)\n", __func__, err);
+			return -ENODEV;
+		}
+	}
+
+	return 0;
 }
 
 static int dw9807_close(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
@@ -159,11 +214,16 @@ static int dw9807_init_controls(struct dw9807_device *dev_vcm)
 	struct v4l2_ctrl_handler *hdl = &dev_vcm->ctrls_vcm;
 	const struct v4l2_ctrl_ops *ops = &dw9807_vcm_ctrl_ops;
 	struct i2c_client *client = v4l2_get_subdevdata(&dev_vcm->sd);
+	struct v4l2_ctrl *ctrl_focus_absolute = NULL;
 
 	v4l2_ctrl_handler_init(hdl, 1);
 
 	v4l2_ctrl_new_std(hdl, ops, V4L2_CID_FOCUS_ABSOLUTE,
 			  0, DW9807_MAX_FOCUS_POS, DW9807_FOCUS_STEPS, 0);
+
+	ctrl_focus_absolute = v4l2_ctrl_find(hdl, V4L2_CID_FOCUS_ABSOLUTE);
+	if(ctrl_focus_absolute)
+		ctrl_focus_absolute->flags |= V4L2_CTRL_FLAG_VOLATILE;
 
 	dev_vcm->sd.ctrl_handler = hdl;
 	if (hdl->error) {
@@ -177,6 +237,7 @@ static int dw9807_init_controls(struct dw9807_device *dev_vcm)
 
 static int dw9807_probe(struct i2c_client *client)
 {
+	struct device *dev = &client->dev;
 	struct dw9807_device *dw9807_dev;
 	int rval;
 
@@ -184,6 +245,8 @@ static int dw9807_probe(struct i2c_client *client)
 				  GFP_KERNEL);
 	if (dw9807_dev == NULL)
 		return -ENOMEM;
+
+	dw9807_dev->client = client;
 
 	v4l2_i2c_subdev_init(&dw9807_dev->sd, client, &dw9807_ops);
 	dw9807_dev->sd.flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
@@ -199,9 +262,32 @@ static int dw9807_probe(struct i2c_client *client)
 
 	dw9807_dev->sd.entity.function = MEDIA_ENT_F_LENS;
 
-	rval = v4l2_async_register_subdev(&dw9807_dev->sd);
-	if (rval < 0)
-		goto err_cleanup;
+	dw9807_dev->standalone = of_property_read_bool(dev->of_node, "standalone");
+	dev_warn(dev, "%s: is standalone? %s\n", __func__, dw9807_dev->standalone? "Yes" : "No");
+
+	if(dw9807_dev->standalone) {
+		dev_warn(dev, "%s: registering the standalone subdev\n", __func__);
+		rval = v4l2_device_register(dev, &dw9807_dev->v4l2_dev);
+		if(rval < 0) {
+			dev_err(dev, "%s: cannot register the standalone v4l2_device\n", __func__);
+			goto err_cleanup;
+		}
+		rval = v4l2_device_register_subdev(&dw9807_dev->v4l2_dev, &dw9807_dev->sd);
+		if(rval < 0) {
+			dev_err(dev, "%s: cannot register the standalone subdev\n", __func__);
+			goto err_cleanup;
+		}
+		rval = v4l2_device_register_subdev_nodes(&dw9807_dev->v4l2_dev);
+		if(rval < 0) {
+			dev_err(dev, "%s: cannot register the standalone subdev node\n", __func__);
+			goto err_cleanup;
+		}
+		dev_warn(dev, "%s: registered the standalone subdev\n", __func__);
+	} else {
+		rval = v4l2_async_register_subdev(&dw9807_dev->sd);
+		if (rval < 0)
+			goto err_cleanup;
+	}
 
 	pm_runtime_set_active(&client->dev);
 	pm_runtime_enable(&client->dev);
@@ -210,6 +296,10 @@ static int dw9807_probe(struct i2c_client *client)
 	return 0;
 
 err_cleanup:
+	if(dw9807_dev->standalone) {
+		v4l2_device_unregister_subdev(&dw9807_dev->sd);
+		v4l2_device_unregister(&dw9807_dev->v4l2_dev);
+	}
 	v4l2_ctrl_handler_free(&dw9807_dev->ctrls_vcm);
 	media_entity_cleanup(&dw9807_dev->sd.entity);
 
@@ -224,6 +314,10 @@ static int dw9807_remove(struct i2c_client *client)
 	pm_runtime_disable(&client->dev);
 
 	dw9807_subdev_cleanup(dw9807_dev);
+
+	if(dw9807_dev->standalone) {
+		v4l2_device_unregister(&dw9807_dev->v4l2_dev);
+	}
 
 	return 0;
 }
@@ -241,19 +335,21 @@ static int __maybe_unused dw9807_vcm_suspend(struct device *dev)
 	const char tx_data[2] = { DW9807_CTL_ADDR, 0x01 };
 	int ret, val;
 
-	for (val = dw9807_dev->current_val & ~(DW9807_CTRL_STEPS - 1);
-	     val >= 0; val -= DW9807_CTRL_STEPS) {
-		ret = dw9807_set_dac(client, val);
-		if (ret)
-			dev_err_once(dev, "%s I2C failure: %d", __func__, ret);
-		usleep_range(DW9807_CTRL_DELAY_US, DW9807_CTRL_DELAY_US + 10);
-	}
+	if(!dw9807_dev->standalone) {
+		for (val = dw9807_dev->current_val & ~(DW9807_CTRL_STEPS - 1);
+		     val >= 0; val -= DW9807_CTRL_STEPS) {
+			ret = dw9807_set_dac(client, val);
+			if (ret)
+				dev_err_once(dev, "%s I2C failure: %d", __func__, ret);
+			usleep_range(DW9807_CTRL_DELAY_US, DW9807_CTRL_DELAY_US + 10);
+		}
 
-	/* Power down */
-	ret = i2c_master_send(client, tx_data, sizeof(tx_data));
-	if (ret < 0) {
-		dev_err(&client->dev, "I2C write CTL fail ret = %d\n", ret);
-		return ret;
+		/* Power down */
+		ret = i2c_master_send(client, tx_data, sizeof(tx_data));
+		if (ret < 0) {
+			dev_err(&client->dev, "I2C write CTL fail ret = %d\n", ret);
+			//return ret;
+		}
 	}
 
 	return 0;
@@ -273,21 +369,22 @@ static int  __maybe_unused dw9807_vcm_resume(struct device *dev)
 	const char tx_data[2] = { DW9807_CTL_ADDR, 0x00 };
 	int ret, val;
 
-	/* Power on */
-	ret = i2c_master_send(client, tx_data, sizeof(tx_data));
-	if (ret < 0) {
-		dev_err(&client->dev, "I2C write CTL fail ret = %d\n", ret);
-		return ret;
-	}
+	if(!dw9807_dev->standalone) {
+		/* Power on */
+		ret = i2c_master_send(client, tx_data, sizeof(tx_data));
+		if (ret < 0) {
+			dev_err(&client->dev, "I2C write CTL fail ret = %d\n", ret);
+			//return ret;
+		}
 
-	for (val = dw9807_dev->current_val % DW9807_CTRL_STEPS;
-	     val < dw9807_dev->current_val + DW9807_CTRL_STEPS - 1;
-	     val += DW9807_CTRL_STEPS) {
-		ret = dw9807_set_dac(client, val);
-		if (ret)
-			dev_err_ratelimited(dev, "%s I2C failure: %d",
-						__func__, ret);
-		usleep_range(DW9807_CTRL_DELAY_US, DW9807_CTRL_DELAY_US + 10);
+		for (val = dw9807_dev->current_val % DW9807_CTRL_STEPS;
+		     val < dw9807_dev->current_val + DW9807_CTRL_STEPS - 1;
+		     val += DW9807_CTRL_STEPS) {
+			ret = dw9807_set_dac(client, val);
+			if (ret)
+				dev_err_ratelimited(dev, "%s I2C failure: %d", __func__, ret);
+			usleep_range(DW9807_CTRL_DELAY_US, DW9807_CTRL_DELAY_US + 10);
+		}
 	}
 
 	return 0;

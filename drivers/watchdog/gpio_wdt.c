@@ -58,7 +58,8 @@ static int gpio_wdt_ping(struct watchdog_device *wdd)
 	case HW_ALGO_LEVEL:
 		/* Pulse */
 		gpiod_set_value_cansleep(priv->gpiod, 1);
-		udelay(1);
+		//udelay(1);
+		mdelay(1);
 		gpiod_set_value_cansleep(priv->gpiod, 0);
 		break;
 	}
@@ -81,11 +82,11 @@ static int gpio_wdt_stop(struct watchdog_device *wdd)
 {
 	struct gpio_wdt_priv *priv = watchdog_get_drvdata(wdd);
 
-	if (!priv->always_running) {
+	//if (!priv->always_running) {
 		gpio_wdt_disable(priv);
-	} else {
-		set_bit(WDOG_HW_RUNNING, &wdd->status);
-	}
+	//} else {
+	//	set_bit(WDOG_HW_RUNNING, &wdd->status);
+	//}
 
 	return 0;
 }

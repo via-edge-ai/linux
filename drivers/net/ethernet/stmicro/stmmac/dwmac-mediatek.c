@@ -3,11 +3,13 @@
  * Copyright (c) 2018 MediaTek Inc.
  */
 #include <linux/bitfield.h>
+#include <linux/gpio/consumer.h>
 #include <linux/io.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/of_gpio.h>
 #include <linux/of_net.h>
 #include <linux/regmap.h>
 #include <linux/stmmac.h>
@@ -481,6 +483,7 @@ static int mediatek_dwmac_config_dt(struct mediatek_dwmac_plat_data *plat)
 {
 	struct mac_delay_struct *mac_delay = &plat->mac_delay;
 	u32 tx_delay_ps, rx_delay_ps;
+	int vio33phy_gpio = -1, vio18phy_gpio = -1;
 	int err;
 
 	plat->peri_regmap = syscon_regmap_lookup_by_phandle(plat->np, "mediatek,pericfg");
@@ -518,6 +521,28 @@ static int mediatek_dwmac_config_dt(struct mediatek_dwmac_plat_data *plat)
 	plat->rmii_rxc = of_property_read_bool(plat->np, "mediatek,rmii-rxc");
 	plat->rmii_clk_from_mac = of_property_read_bool(plat->np, "mediatek,rmii-clk-from-mac");
 	plat->mac_wol = of_property_read_bool(plat->np, "mediatek,mac-wol");
+
+#if 1
+	vio33phy_gpio = of_get_named_gpio(plat->np,
+					  "snps,vio33phy-gpio", 0);
+	vio18phy_gpio = of_get_named_gpio(plat->np,
+					  "snps,vio18phy-gpio", 0);
+
+	if (gpio_is_valid(vio33phy_gpio)) {
+		if (!devm_gpio_request(plat->dev, vio33phy_gpio,
+				       "vio33phy-gpio")) {
+			gpio_direction_output(vio33phy_gpio, 1);
+		}
+	}
+
+	if (gpio_is_valid(vio18phy_gpio)) {
+		if (!devm_gpio_request(plat->dev, vio18phy_gpio,
+				       "vio18phy-gpio")) {
+			usleep_range(500, 1000);
+			gpio_direction_output(vio18phy_gpio, 1);
+		}
+	}
+#endif
 
 	return 0;
 }

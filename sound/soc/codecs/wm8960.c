@@ -571,6 +571,9 @@ static int wm8960_set_dai_fmt(struct snd_soc_dai *codec_dai,
 
 	/* set iface */
 	snd_soc_component_write(component, WM8960_IFACE1, iface);
+	/* enable ADC signal path */
+	snd_soc_component_write(component, WM8960_LINPATH, 0x108);
+	snd_soc_component_write(component, WM8960_RINPATH, 0x108);
 	return 0;
 }
 
@@ -1303,6 +1306,7 @@ static int wm8960_set_dai_sysclk(struct snd_soc_dai *dai, int clk_id,
 		return -EINVAL;
 	}
 
+	wm8960->freq_in = 24000000;
 	wm8960->sysclk = freq;
 	wm8960->clk_id = clk_id;
 
@@ -1413,6 +1417,7 @@ static int wm8960_i2c_probe(struct i2c_client *i2c,
 	if (wm8960 == NULL)
 		return -ENOMEM;
 
+	wm8960->clk_id = WM8960_SYSCLK_MCLK;
 	wm8960->mclk = devm_clk_get(&i2c->dev, "mclk");
 	if (IS_ERR(wm8960->mclk)) {
 		if (PTR_ERR(wm8960->mclk) == -EPROBE_DEFER)

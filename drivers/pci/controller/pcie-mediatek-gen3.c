@@ -8,12 +8,14 @@
 
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/gpio.h>
 #include <linux/iopoll.h>
 #include <linux/irq.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of_gpio.h>
 #include <linux/msi.h>
 #include <linux/pci.h>
 #include <linux/phy/phy.h>
@@ -111,6 +113,7 @@ struct mtk_msi_set {
 	void __iomem *base;
 	phys_addr_t msg_addr;
 	u32 saved_irq_state;
+	bool l2_bypass;
 };
 
 /**
@@ -123,6 +126,7 @@ struct mtk_msi_set {
  * @phy: PHY controller block
  * @clks: PCIe clocks
  * @num_clks: PCIe clocks count for this port
+ * @l2_bypass: bypass L2 entry
  * @irq: PCIe controller interrupt number
  * @saved_irq_state: IRQ enable state saved at suspend time
  * @irq_lock: lock protecting IRQ register access
@@ -142,6 +146,7 @@ struct mtk_pcie_port {
 	struct phy *phy;
 	struct clk_bulk_data *clks;
 	int num_clks;
+	bool l2_bypass;
 
 	int irq;
 	u32 saved_irq_state;
@@ -735,6 +740,8 @@ static int mtk_pcie_parse_port(struct mtk_pcie_port *port)
 
 	port->reg_base = regs->start;
 
+	port->l2_bypass = of_property_read_bool(dev->of_node, "l2,bypass");
+
 	port->phy_reset = devm_reset_control_get_optional_exclusive(dev, "phy");
 	if (IS_ERR(port->phy_reset)) {
 		ret = PTR_ERR(port->phy_reset);
@@ -833,11 +840,31 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 
 static int mtk_pcie_setup(struct mtk_pcie_port *port)
 {
+	struct device *dev = port->dev;
+	struct device_node *node = dev->of_node;
+	int pcie_m2_pwron_gpio;
+	bool pcie_m2_pwron_invert;
 	int err;
 
 	err = mtk_pcie_parse_port(port);
 	if (err)
 		return err;
+
+	pcie_m2_pwron_gpio = of_get_named_gpio(node,
+					"mediatek,pcie-m2-pwron-gpio", 0);
+
+	if (gpio_is_valid(pcie_m2_pwron_gpio)
+		/*&& (!devm_gpio_request(dev, pcie_m2_pwron_gpio,
+			"mediatek,pcie-m2-pwron-gpio"))*/) {
+		pcie_m2_pwron_invert = of_property_read_bool(node, "mediatek,pcie-m2-pwron-invert");
+		dev_info(dev, "pcie_m2_pwron_gpio is %d, invert:%d\n", pcie_m2_pwron_gpio, pcie_m2_pwron_invert);
+
+		/* power on m2 module signal if exists */
+		msleep(50);
+		gpio_direction_output(pcie_m2_pwron_gpio, (pcie_m2_pwron_invert) ? 0:1);
+		dev_info(dev, "pcie_m2_pwron gpio(%d) = %d\n",
+			pcie_m2_pwron_gpio, gpio_get_value(pcie_m2_pwron_gpio));
+	}
 
 	/* Don't touch the hardware registers before power up */
 	err = mtk_pcie_power_up(port);
@@ -964,13 +991,16 @@ static int __maybe_unused mtk_pcie_turn_off_link(struct mtk_pcie_port *port)
 static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 {
 	struct mtk_pcie_port *port = dev_get_drvdata(dev);
-	int err;
 
-	/* Trigger link to L2 state */
-	err = mtk_pcie_turn_off_link(port);
-	if (err) {
-		dev_err(port->dev, "cannot enter L2 state\n");
-		return err;
+	if (!port->l2_bypass) {
+		int err;
+		/* Trigger link to L2 state */
+		err = mtk_pcie_turn_off_link(port);
+		if (err) {
+			dev_dbg(port->dev, "cannot enter L2 state\n");
+			return err;
+		}
+		dev_dbg(port->dev, "entered L2 states successfully");
 	}
 
 	dev_dbg(port->dev, "entered L2 states successfully");

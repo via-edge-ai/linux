@@ -1001,7 +1001,7 @@ out:
 
 	if (ret < 0) {
 		soc_pcm_hw_clean(substream, 1);
-		dev_err(rtd->dev, "ASoC: %s() failed (%d)\n", __func__, ret);
+		dev_dbg(rtd->dev, "ASoC: %s() failed (%d)\n", __func__, ret);
 	}
 
 	return ret;
@@ -1982,7 +1982,7 @@ out:
 	mutex_unlock(&fe->card->mutex);
 
 	if (ret < 0)
-		dev_err(fe->dev, "ASoC: %s failed (%d)\n", __func__, ret);
+		dev_dbg(fe->dev, "ASoC: %s failed (%d)\n", __func__, ret);
 
 	return ret;
 }
@@ -2276,7 +2276,7 @@ static int dpcm_fe_dai_prepare(struct snd_pcm_substream *substream)
 
 	/* there is no point preparing this FE if there are no BEs */
 	if (list_empty(&fe->dpcm[stream].be_clients)) {
-		dev_err(fe->dev, "ASoC: no backend DAIs enabled for %s\n",
+		dev_dbg(fe->dev, "ASoC: no backend DAIs enabled for %s\n",
 				fe->dai_link->name);
 		ret = -EINVAL;
 		goto out;
@@ -2298,7 +2298,7 @@ out:
 	mutex_unlock(&fe->card->mutex);
 
 	if (ret < 0)
-		dev_err(fe->dev, "ASoC: %s() failed (%d)\n", __func__, ret);
+		dev_dbg(fe->dev, "ASoC: %s() failed (%d)\n", __func__, ret);
 
 	return ret;
 }

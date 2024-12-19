@@ -14,6 +14,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include "../../codecs/mt6359.h"
+#include "../../codecs/wm8960.h"
 #include "../common/mtk-afe-platform-driver.h"
 #include "../common/mtk-dsp-sof-common.h"
 #include "../common/mtk-soc-card.h"
@@ -329,6 +330,30 @@ static int mt8188_dptx_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	params_set_format(params, SNDRV_PCM_FORMAT_S24_LE);
 	return 0;
 }
+
+static int mt8188_pcm1_hw_params(struct snd_pcm_substream *substream,
+				 struct snd_pcm_hw_params *params)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_dai *codec_dai = asoc_rtd_to_codec(rtd, 0);
+	unsigned int mclk_fs = params_rate(params) * 256;
+	int ret = 0;
+
+	dev_info(rtd->dev, "%s, codec dai name = %s\n", __func__, codec_dai->name);
+
+	if (!strcmp(codec_dai->name, "wm8960-hifi")) {
+		ret = snd_soc_dai_set_sysclk(codec_dai, WM8960_SYSCLK_MCLK, mclk_fs,
+				      SND_SOC_CLOCK_IN);
+		if (ret < 0)
+			dev_err(rtd->dev, "%s, set_sysclk failed\n", __func__);
+	}
+
+	return ret;
+}
+
+static const struct snd_soc_ops mt8188_pcm1_ops = {
+	.hw_params = mt8188_pcm1_hw_params,
+};
 
 enum {
 	DAI_LINK_DL2_FE,
@@ -773,6 +798,7 @@ static struct snd_soc_dai_link mt8188_mt6359_dai_links[] = {
 			SND_SOC_DAIFMT_CBC_CFC,
 		.dpcm_playback = 1,
 		.dpcm_capture = 1,
+		.ops = &mt8188_pcm1_ops,
 		SND_SOC_DAILINK_REG(PCM1_BE),
 	},
 	/* SOF BE */

@@ -3837,6 +3837,9 @@ static void run_state_machine(struct tcpm_port *port)
 	unsigned int msecs;
 	enum tcpm_state upcoming_state;
 
+	tcpm_log(port, "%s -> %s",
+				 __func__, tcpm_states[port->state]);
+
 	port->enter_state = port->state;
 	switch (port->state) {
 	case TOGGLING:
@@ -3861,7 +3864,7 @@ static void run_state_machine(struct tcpm_port *port)
 		else if (tcpm_port_is_audio(port))
 			tcpm_set_state(port, AUDIO_ACC_ATTACHED,
 				       PD_T_CC_DEBOUNCE);
-		else if (tcpm_port_is_source(port) && port->vbus_vsafe0v)
+		else if (tcpm_port_is_source(port) && (port->vbus_never_low || port->vbus_vsafe0v))
 			tcpm_set_state(port,
 				       tcpm_try_snk(port) ? SNK_TRY
 							  : SRC_ATTACHED,
@@ -3924,7 +3927,10 @@ static void run_state_machine(struct tcpm_port *port)
 
 	case SRC_ATTACHED:
 		ret = tcpm_src_attach(port);
-		tcpm_set_state(port, SRC_UNATTACHED,
+		if (port->vbus_never_low)
+			tcpm_set_state(port, SRC_STARTUP, 0);
+		else
+			tcpm_set_state(port, SRC_UNATTACHED,
 			       ret < 0 ? 0 : PD_T_PS_SOURCE_ON);
 		break;
 	case SRC_STARTUP:
@@ -5849,6 +5855,8 @@ static void tcpm_init(struct tcpm_port *port)
 	if (port->vbus_present)
 		port->vbus_never_low = true;
 
+	tcpm_log(port, "vbus_never_low: %d", port->vbus_never_low);
+
 	/*
 	 * 1. When vbus_present is true, voltage on VBUS is already at VSAFE5V.
 	 * So implicitly vbus_vsafe0v = false.
@@ -5951,6 +5959,7 @@ static int tcpm_fw_get_caps(struct tcpm_port *port,
 			return ret;
 		port->typec_caps.data = ret;
 	}
+	tcpm_log(port, "data-role: %s/%d", cap_str, ret);
 
 	ret = fwnode_property_read_string(fwnode, "power-role", &cap_str);
 	if (ret < 0)
@@ -5961,6 +5970,8 @@ static int tcpm_fw_get_caps(struct tcpm_port *port,
 		return ret;
 	port->typec_caps.type = ret;
 	port->port_type = port->typec_caps.type;
+	tcpm_log(port, "power-role: %s/%d", cap_str, ret);
+
 	port->pd_supported = !fwnode_property_read_bool(fwnode, "pd-disable");
 
 	port->slow_charger_loop = fwnode_property_read_bool(fwnode, "slow-charger-loop");

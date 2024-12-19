@@ -31,6 +31,15 @@
 #define RTL8211F_PHYCR2				0x19
 #define RTL8211F_INSR				0x1d
 
+#define RTL8211F_LED0_1000M			BIT(3)
+#define RTL8211F_LED1_ACT			BIT(9)
+#define RTL8211F_LED2_100M			BIT(11)
+#define RTL8211F_LED_MODE			BIT(15)
+
+#define RTL8211F_LED0_EEE			BIT(1)
+#define RTL8211F_LED1_EEE			BIT(2)
+#define RTL8211F_LED2_EEE			BIT(3)
+
 #define RTL8211F_TX_DELAY			BIT(8)
 #define RTL8211F_RX_DELAY			BIT(3)
 
@@ -41,6 +50,13 @@
 #define RTL8211E_CTRL_DELAY			BIT(13)
 #define RTL8211E_TX_DELAY			BIT(12)
 #define RTL8211E_RX_DELAY			BIT(11)
+
+#define RTL8211E_LED0_ACT			BIT(4)
+#define RTL8211E_LED1_ACT			BIT(5)
+#define RTL8211E_LED2_ACT			BIT(6)
+#define RTL8211E_LED0_LINK			GENMASK(2, 0)
+#define RTL8211E_LED1_LINK			GENMASK(6, 4)
+#define RTL8211E_LED2_LINK			GENMASK(10, 8)
 
 #define RTL8211F_CLKOUT_EN			BIT(0)
 
@@ -334,6 +350,7 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 	struct rtl821x_priv *priv = phydev->priv;
 	struct device *dev = &phydev->mdio.dev;
 	u16 val_txdly, val_rxdly;
+	//u16 val_txdly, val_rxdly, val, mask;
 	int ret;
 
 	ret = phy_modify_paged_changed(phydev, 0xa43, RTL8211F_PHYCR1,
@@ -344,6 +361,33 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 			ERR_PTR(ret));
 		return ret;
 	}
+
+#if 0
+	/* config LED:
+	 * LED_MODE B
+	 * LED1_ACT 10/100/1000 M
+	 * LED2_LINK 100M
+	 * LED0_LINK 1000M
+	 * LED0/LED1/LED2 EEE disable
+	 */
+	val = RTL8211F_LED_MODE;
+	val |= RTL8211F_LED0_1000M | RTL8211F_LED2_100M | RTL8211F_LED1_ACT;
+	ret = phy_modify_paged(phydev, 0xd04, 0x10, 0xef7b, val);
+	if (ret < 0) {
+		dev_err(dev,
+			"PHY reg 0xd04(0x10) write failed! %d\n", ret);
+		return ret;
+	}
+
+	val = 0;
+	mask = RTL8211F_LED2_EEE | RTL8211F_LED1_EEE | RTL8211F_LED0_EEE;
+	ret = phy_modify_paged(phydev, 0xd04, 0x11, mask, val);
+	if (ret < 0) {
+		dev_err(dev,
+			"PHY reg 0xd04(0x11) write failed! %d\n", ret);
+		return ret;
+	}
+#endif
 
 	switch (phydev->interface) {
 	case PHY_INTERFACE_MODE_RGMII:
@@ -467,6 +511,46 @@ static int rtl8211e_config_init(struct phy_device *phydev)
 	ret = __phy_modify(phydev, 0x1c, RTL8211E_CTRL_DELAY
 			   | RTL8211E_TX_DELAY | RTL8211E_RX_DELAY,
 			   val);
+#if 0
+	if (ret < 0)
+		goto err_restore_page;
+
+	/* RTL8211E LED pins config registers are ext. page 44(0x2c) register 26 & 28.
+	 * To switch to ext. page 44(0x2c), change page(Reg 31) to 0x0007(ext. page) and
+	 * set Reg 30 to 0x002c(ext. page 44).
+	 */
+	ret = __phy_write(phydev, RTL821x_EXT_PAGE_SELECT, 0x002c);
+	if (ret < 0)
+		goto err_restore_page;
+
+	ret = __phy_modify(phydev, 28,
+			RTL8211E_LED2_LINK|RTL8211E_LED1_LINK, 0x0240);
+	if (ret < 0)
+		goto err_restore_page;
+
+	ret = __phy_modify(phydev, 26,
+			RTL8211E_LED2_ACT|RTL8211E_LED1_ACT, 0);
+	if (ret < 0)
+		goto err_restore_page;
+
+	/* Disable RTL8211E LED EEE mode display:
+	 * Change page(Reg 31) to 0x0005(page 5) and
+	 * set Reg 5 to 0x8b82, set Reg 6 to 0x052b.
+	 */
+	phy_restore_page(phydev, oldpage, ret);
+
+	oldpage = phy_select_page(phydev, 0x05);
+	if (oldpage < 0)
+		goto err_restore_page;
+
+	ret = __phy_write(phydev, 5, 0x8b82);
+	if (ret < 0)
+		goto err_restore_page;
+
+	ret = __phy_write(phydev, 6, 0x052b);
+	if (ret < 0)
+		goto err_restore_page;
+#endif
 
 err_restore_page:
 	return phy_restore_page(phydev, oldpage, ret);

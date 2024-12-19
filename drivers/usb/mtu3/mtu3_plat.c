@@ -6,11 +6,13 @@
  */
 
 #include <linux/dma-mapping.h>
+#include <linux/gpio.h>
 #include <linux/iopoll.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/pm_wakeirq.h>
 
@@ -93,6 +95,23 @@ static int wait_for_ip_sleep(struct ssusb_mtk *ssusb)
 	}
 
 	return ret;
+}
+
+static void ssusb_usbpw_work(struct work_struct *w)
+{
+	struct ssusb_mtk *ssusb = container_of(w, struct ssusb_mtk, usbpw_work);
+
+	mdelay(500);
+
+	gpio_direction_output(ssusb->usb_port_pwron_gpio, 0); //active-low
+	dev_info(ssusb->dev, "usb_port_pwron gpio(%d) = %d\n",
+		ssusb->usb_port_pwron_gpio, gpio_get_value(ssusb->usb_port_pwron_gpio));
+}
+
+void ssusb_usb_port_powerup(struct ssusb_mtk *ssusb)
+{
+	dev_info(ssusb->dev, "usb port powerup\n");
+	queue_work(system_power_efficient_wq, &ssusb->usbpw_work);
 }
 
 static int ssusb_phy_init(struct ssusb_mtk *ssusb)
@@ -221,6 +240,9 @@ static int get_ssusb_rscs(struct platform_device *pdev, struct ssusb_mtk *ssusb)
 	struct device *dev = &pdev->dev;
 	int i;
 	int ret;
+
+	ssusb->usb_port_pwron_gpio = of_get_named_gpio(node,
+					"mediatek,usb-port-pwron-gpio", 0);
 
 	ssusb->vusb33 = devm_regulator_get(dev, "vusb33");
 	if (IS_ERR(ssusb->vusb33)) {
@@ -423,6 +445,16 @@ static int mtu3_probe(struct platform_device *pdev)
 		dev_err(dev, "unsupported mode: %d\n", ssusb->dr_mode);
 		ret = -EINVAL;
 		goto comm_exit;
+	}
+
+	INIT_WORK(&ssusb->usbpw_work, ssusb_usbpw_work);
+
+	if (gpio_is_valid(ssusb->usb_port_pwron_gpio)
+		/*&& (!devm_gpio_request(dev, ssusb->usb_port_pwron_gpio,
+			"mediatek,usb-port-pwron-gpio"))*/) {
+		dev_info(dev, "usb_port_pwron_gpio is %d\n", ssusb->usb_port_pwron_gpio);
+		/* power on usb port signal if exists */
+		queue_work(system_power_efficient_wq, &ssusb->usbpw_work);
 	}
 
 	device_enable_async_suspend(dev);

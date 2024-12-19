@@ -263,6 +263,8 @@ struct ssusb_mtk {
 	int u3_ports;
 	int u2p_dis_msk;
 	int u3p_dis_msk;
+	int usb_port_pwron_gpio;
+	struct work_struct usbpw_work;
 	struct dentry *dbgfs_root;
 	bool force_vbus;
 	/* usb wakeup for host mode */
