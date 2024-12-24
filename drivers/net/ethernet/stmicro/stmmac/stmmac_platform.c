@@ -737,8 +737,9 @@ static int __maybe_unused stmmac_pltfr_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 
 	ret = stmmac_suspend(dev);
-	if (priv->plat->exit)
-		priv->plat->exit(pdev, priv->plat->bsp_priv);
+	if (!device_may_wakeup(priv->device))
+		if (priv->plat->exit)
+			priv->plat->exit(pdev, priv->plat->bsp_priv);
 
 	return ret;
 }
@@ -756,8 +757,9 @@ static int __maybe_unused stmmac_pltfr_resume(struct device *dev)
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	struct platform_device *pdev = to_platform_device(dev);
 
-	if (priv->plat->init)
-		priv->plat->init(pdev, priv->plat->bsp_priv);
+	if (!device_may_wakeup(priv->device))
+		if (priv->plat->init)
+			priv->plat->init(pdev, priv->plat->bsp_priv);
 
 	return stmmac_resume(dev);
 }
