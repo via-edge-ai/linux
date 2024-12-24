@@ -328,7 +328,7 @@
 		clock-frequency = <13000000>;
 	};
 
-	soc {
+	soc: soc {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		compatible = "simple-bus";
@@ -3219,14 +3219,15 @@
 				};
 			};
 			mtl_tx_setup: tx-queues-config {
-				snps,tx-queues-to-use = <4>;
+				//snps,tx-queues-to-use = <4>;
+				snps,tx-queues-to-use = <1>;
 				snps,tx-sched-wrr;
 				queue0 {
 					snps,weight = <0x10>;
 					snps,dcb-algorithm;
 					snps,priority = <0x0>;
 				};
-				queue1 {
+				/*queue1 {
 					snps,weight = <0x11>;
 					snps,dcb-algorithm;
 					snps,priority = <0x1>;
@@ -3240,7 +3241,7 @@
 					snps,weight = <0x13>;
 					snps,dcb-algorithm;
 					snps,priority = <0x3>;
-				};
+				};*/
 			};
 		};
 

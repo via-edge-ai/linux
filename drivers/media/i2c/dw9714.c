@@ -35,6 +35,8 @@ struct dw9714_device {
 	struct v4l2_ctrl_handler ctrls_vcm;
 	struct v4l2_subdev sd;
 	u16 current_val;
+	bool standalone;
+	struct v4l2_device v4l2_dev;
 };
 
 static inline struct dw9714_device *to_dw9714_vcm(struct v4l2_ctrl *ctrl)
@@ -128,6 +130,7 @@ static int dw9714_init_controls(struct dw9714_device *dev_vcm)
 
 static int dw9714_probe(struct i2c_client *client)
 {
+	struct device *dev = &client->dev;
 	struct dw9714_device *dw9714_dev;
 	int rval;
 
@@ -150,15 +153,42 @@ static int dw9714_probe(struct i2c_client *client)
 
 	dw9714_dev->sd.entity.function = MEDIA_ENT_F_LENS;
 
-	rval = v4l2_async_register_subdev(&dw9714_dev->sd);
-	if (rval < 0)
-		goto err_cleanup;
+	dw9714_dev->standalone = of_property_read_bool(dev->of_node, "standalone");
+	dev_warn(dev, "%s: is standalone? %s\n", __func__, dw9714_dev->standalone? "Yes" : "No");
+
+	if(dw9714_dev->standalone) {
+		dev_warn(dev, "%s: registering the standalone subdev...\n", __func__);
+		rval = v4l2_device_register(dev, &dw9714_dev->v4l2_dev);
+		if(rval < 0) {
+			dev_err(dev, "%s: cannot register the standalone v4l2_device\n", __func__);
+			goto err_cleanup;
+		}
+		rval = v4l2_device_register_subdev(&dw9714_dev->v4l2_dev, &dw9714_dev->sd);
+		if(rval < 0) {
+			dev_err(dev, "%s: cannot register the standalone subdev\n", __func__);
+			goto err_unregister_v4l2_dev;
+		}
+		rval = v4l2_device_register_subdev_nodes(&dw9714_dev->v4l2_dev);
+		if(rval < 0) {
+			dev_err(dev, "%s: cannot register the standalone subdev nodes\n", __func__);
+			goto err_unregister_v4l2_dev;
+		}
+		dev_warn(dev, "%s: registered the standalone subdev...\n", __func__);
+	} else {
+		rval = v4l2_async_register_subdev(&dw9714_dev->sd);
+		if (rval < 0)
+			goto err_cleanup;
+	}
 
 	pm_runtime_set_active(&client->dev);
 	pm_runtime_enable(&client->dev);
 	pm_runtime_idle(&client->dev);
 
 	return 0;
+
+err_unregister_v4l2_dev:
+	if(dw9714_dev->standalone)
+		v4l2_device_unregister(&dw9714_dev->v4l2_dev);
 
 err_cleanup:
 	v4l2_ctrl_handler_free(&dw9714_dev->ctrls_vcm);
@@ -175,6 +205,9 @@ static int dw9714_remove(struct i2c_client *client)
 	pm_runtime_disable(&client->dev);
 	dw9714_subdev_cleanup(dw9714_dev);
 
+	if(dw9714_dev->standalone)
+		v4l2_device_unregister(&dw9714_dev->v4l2_dev);
+
 	return 0;
 }
 
@@ -190,13 +223,15 @@ static int __maybe_unused dw9714_vcm_suspend(struct device *dev)
 	struct dw9714_device *dw9714_dev = sd_to_dw9714_vcm(sd);
 	int ret, val;
 
-	for (val = dw9714_dev->current_val & ~(DW9714_CTRL_STEPS - 1);
-	     val >= 0; val -= DW9714_CTRL_STEPS) {
-		ret = dw9714_i2c_write(client,
-				       DW9714_VAL(val, DW9714_DEFAULT_S));
-		if (ret)
-			dev_err_once(dev, "%s I2C failure: %d", __func__, ret);
-		usleep_range(DW9714_CTRL_DELAY_US, DW9714_CTRL_DELAY_US + 10);
+	if(!dw9714_dev->standalone) {
+		for (val = dw9714_dev->current_val & ~(DW9714_CTRL_STEPS - 1);
+			 val >= 0; val -= DW9714_CTRL_STEPS) {
+			ret = dw9714_i2c_write(client,
+						   DW9714_VAL(val, DW9714_DEFAULT_S));
+			if (ret)
+				dev_err_once(dev, "%s I2C failure: %d", __func__, ret);
+			usleep_range(DW9714_CTRL_DELAY_US, DW9714_CTRL_DELAY_US + 10);
+		}
 	}
 	return 0;
 }
@@ -214,15 +249,17 @@ static int  __maybe_unused dw9714_vcm_resume(struct device *dev)
 	struct dw9714_device *dw9714_dev = sd_to_dw9714_vcm(sd);
 	int ret, val;
 
-	for (val = dw9714_dev->current_val % DW9714_CTRL_STEPS;
-	     val < dw9714_dev->current_val + DW9714_CTRL_STEPS - 1;
-	     val += DW9714_CTRL_STEPS) {
-		ret = dw9714_i2c_write(client,
-				       DW9714_VAL(val, DW9714_DEFAULT_S));
-		if (ret)
-			dev_err_ratelimited(dev, "%s I2C failure: %d",
-						__func__, ret);
-		usleep_range(DW9714_CTRL_DELAY_US, DW9714_CTRL_DELAY_US + 10);
+	if(!dw9714_dev->standalone) {
+		for (val = dw9714_dev->current_val % DW9714_CTRL_STEPS;
+			 val < dw9714_dev->current_val + DW9714_CTRL_STEPS - 1;
+			 val += DW9714_CTRL_STEPS) {
+			ret = dw9714_i2c_write(client,
+						   DW9714_VAL(val, DW9714_DEFAULT_S));
+			if (ret)
+				dev_err_ratelimited(dev, "%s I2C failure: %d",
+							__func__, ret);
+			usleep_range(DW9714_CTRL_DELAY_US, DW9714_CTRL_DELAY_US + 10);
+		}
 	}
 
 	return 0;
