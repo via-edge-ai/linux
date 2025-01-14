@@ -366,12 +366,12 @@
 		mt6359keys: mt6359keys {
 			compatible = "mediatek,mt6359-keys";
 			power {
-				linux,keycodes = <KEY_POWER>;
+				linux,keycodes = <116>; /* KEY_POWER */
 				wakeup-source;
 			};
 
 			home {
-				linux,keycodes = <KEY_HOME>;
+				linux,keycodes = <KEY_VOLUMEDOWN>;
 			};
 		};
 	};

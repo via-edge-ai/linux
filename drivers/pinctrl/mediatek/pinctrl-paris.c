@@ -14,7 +14,8 @@
 #include <dt-bindings/pinctrl/mt65xx.h>
 #include "pinctrl-paris.h"
 
-#define PINCTRL_PINCTRL_DEV	KBUILD_MODNAME
+//#define PINCTRL_PINCTRL_DEV	KBUILD_MODNAME
+#define PINCTRL_PINCTRL_DEV	MTK_PINCTRL_DEV
 
 /* Custom pinconf parameters */
 #define MTK_PIN_CONFIG_TDSEL	(PIN_CONFIG_END + 1)
