@@ -111,6 +111,22 @@ config USB_RTL8152
 	  To compile this driver as a module, choose M here: the
 	  module will be called r8152.
 
+config USB_RTL8152_OEM
+	tristate "Realtek OEM RTL8152/RTL8153 Based USB Ethernet Adapters"
+	depends on !(USB_RTL8152=y)
+	select MII
+	select CRC32
+	select CRYPTO
+	select CRYPTO_HASH
+	select CRYPTO_SHA256
+	help
+	  This option adds support for Realtek RTL8152 based USB 2.0
+	  10/100 Ethernet adapters and RTL8153 based USB 3.0 10/100/1000
+	  Ethernet adapters.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called r8152_oem.
+
 config USB_LAN78XX
 	tristate "Microchip LAN78XX Based USB Ethernet Adapters"
 	select MII

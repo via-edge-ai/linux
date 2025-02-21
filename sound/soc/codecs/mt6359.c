@@ -2735,7 +2735,7 @@ static const DECLARE_TLV_DB_SCALE(capture_tlv, 0, 600, 0);
 static const struct snd_kcontrol_new mt6359_snd_controls[] = {
 	/* dl pga gain */
 	SOC_DOUBLE_EXT_TLV("Headset Volume",
-			   MT6359_ZCD_CON2, 0, 7, 0x1E, 0,
+			   MT6359_ZCD_CON2, 0, 7, 0x1E, 1,
 			   snd_soc_get_volsw, mt6359_put_volsw,
 			   hp_playback_tlv),
 	SOC_DOUBLE_EXT_TLV("Lineout Volume",

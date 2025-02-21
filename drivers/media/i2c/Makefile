@@ -137,4 +137,8 @@ obj-$(CONFIG_VIDEO_RDACM20)	+= rdacm20.o
 obj-$(CONFIG_VIDEO_RDACM21)	+= rdacm21.o
 obj-$(CONFIG_VIDEO_ST_MIPID02) += st-mipid02.o
 obj-$(CONFIG_SDR_MAX2175) += max2175.o
+obj-$(CONFIG_VIDEO_DS90UB960)	+= ds90ub960.o
+obj-$(CONFIG_VIDEO_TP2855)	+= tp2855.o
+obj-$(CONFIG_VIDEO_FM828)	+= fm828.o
+obj-$(CONFIG_VIDEO_SCA179M)	+= sca179m.o
 

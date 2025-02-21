@@ -1,0 +1,1399 @@
+mesh_sync.c:124:			  sta->sta.addr);
+mesh_sync.c:130:	sta->mesh->t_offset = t_t - t_r;
+mesh_sync.c:133:		s64 t_clockdrift = sta->mesh->t_offset_setpoint - sta->mesh->t_offset;
+mesh_sync.c:136:			  sta->sta.addr, (long long) sta->mesh->t_offset,
+mesh_sync.c:137:			  (long long) sta->mesh->t_offset_setpoint,
+mesh_sync.c:144:				  sta->sta.addr,
+mesh_sync.c:155:		sta->mesh->t_offset_setpoint = sta->mesh->t_offset - TOFFSET_SET_MARGIN;
+mesh_sync.c:159:			  sta->sta.addr,
+mesh_sync.c:160:			  (long long) sta->mesh->t_offset);
+sta_info.c:80:	return rhltable_remove(&local->sta_hash, &sta->hash_node,
+sta_info.c:88:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:95:		if (sta->sdata->vif.type == NL80211_IFTYPE_AP ||
+sta_info.c:96:		    sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
+sta_info.c:110:	if (sta->sta.txq[0]) {
+sta_info.c:111:		for (i = 0; i < ARRAY_SIZE(sta->sta.txq); i++) {
+sta_info.c:114:			if (!sta->sta.txq[i])
+sta_info.c:117:			txqi = to_txq_info(sta->sta.txq[i]);
+sta_info.c:124:		local->total_ps_buffered -= skb_queue_len(&sta->ps_tx_buf[ac]);
+sta_info.c:125:		ieee80211_purge_tx_queue(&local->hw, &sta->ps_tx_buf[ac]);
+sta_info.c:126:		ieee80211_purge_tx_queue(&local->hw, &sta->tx_filtered[ac]);
+sta_info.c:132:	cancel_work_sync(&sta->drv_deliver_wk);
+sta_info.c:141:		kfree(sta->ampdu_mlme.tid_start_tx[i]);
+sta_info.c:142:		tid_tx = rcu_dereference_raw(sta->ampdu_mlme.tid_tx[i]);
+sta_info.c:152:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:175:		if (sta->sdata == sdata) {
+sta_info.c:200:		if (sta->sdata == sdata ||
+sta_info.c:201:		    (sta->sdata->bss && sta->sdata->bss == sdata->bss)) {
+sta_info.c:220:		if (ether_addr_equal(vif_addr, sta->sdata->vif.addr))
+sta_info.c:236:		if (sdata != sta->sdata)
+sta_info.c:269:	while (sta->sta_state > IEEE80211_STA_NONE) {
+sta_info.c:274:		ret = sta_info_move_state(sta, sta->sta_state - 1);
+sta_info.c:279:	if (sta->rate_ctrl)
+sta_info.c:282:	sta_dbg(sta->sdata, "Destroyed STA %pM\n", sta->sta.addr);
+sta_info.c:284:	if (sta->sta.txq[0])
+sta_info.c:285:		kfree(to_txq_info(sta->sta.txq[0]));
+sta_info.c:286:	kfree(rcu_dereference_raw(sta->sta.rates));
+sta_info.c:288:	kfree(sta->mesh);
+sta_info.c:290:	free_percpu(sta->pcpu_rx_stats);
+sta_info.c:298:	return rhltable_insert(&local->sta_hash, &sta->hash_node,
+sta_info.c:308:	if (sta->dead)
+sta_info.c:327:	sta->rate_ctrl = local->rate_ctrl;
+sta_info.c:328:	sta->rate_ctrl_priv = rate_control_alloc_sta(sta->rate_ctrl,
+sta_info.c:330:	if (!sta->rate_ctrl_priv)
+sta_info.c:349:		sta->pcpu_rx_stats =
+sta_info.c:351:		if (!sta->pcpu_rx_stats)
+sta_info.c:355:	spin_lock_init(&sta->lock);
+sta_info.c:356:	spin_lock_init(&sta->ps_lock);
+sta_info.c:357:	INIT_WORK(&sta->drv_deliver_wk, sta_deliver_ps_frames);
+sta_info.c:358:	INIT_WORK(&sta->ampdu_mlme.work, ieee80211_ba_session_work);
+sta_info.c:359:	mutex_init(&sta->ampdu_mlme.mtx);
+sta_info.c:362:		sta->mesh = kzalloc(sizeof(*sta->mesh), gfp);
+sta_info.c:363:		if (!sta->mesh)
+sta_info.c:365:		sta->mesh->plink_sta = sta;
+sta_info.c:366:		spin_lock_init(&sta->mesh->plink_lock);
+sta_info.c:369:			timer_setup(&sta->mesh->plink_timer, mesh_plink_timer,
+sta_info.c:371:		sta->mesh->nonpeer_pm = NL80211_MESH_POWER_ACTIVE;
+sta_info.c:375:	memcpy(sta->addr, addr, ETH_ALEN);
+sta_info.c:376:	memcpy(sta->sta.addr, addr, ETH_ALEN);
+sta_info.c:377:	sta->sta.max_rx_aggregation_subframes =
+sta_info.c:386:	BUILD_BUG_ON(ARRAY_SIZE(sta->ptk) <= INVALID_PTK_KEYIDX);
+sta_info.c:387:	sta->ptk_idx = INVALID_PTK_KEYIDX;
+sta_info.c:389:	sta->local = local;
+sta_info.c:390:	sta->sdata = sdata;
+sta_info.c:391:	sta->rx_stats.last_rx = jiffies;
+sta_info.c:393:	u64_stats_init(&sta->rx_stats.syncp);
+sta_info.c:395:	ieee80211_init_frag_cache(&sta->frags);
+sta_info.c:397:	sta->sta_state = IEEE80211_STA_NONE;
+sta_info.c:400:	sta->reserved_tid = IEEE80211_TID_UNRESERVED;
+sta_info.c:402:	sta->last_connected = ktime_get_seconds();
+sta_info.c:403:	ewma_signal_init(&sta->rx_stats_avg.signal);
+sta_info.c:404:	ewma_avg_signal_init(&sta->status_stats.avg_ack_signal);
+sta_info.c:405:	for (i = 0; i < ARRAY_SIZE(sta->rx_stats_avg.chain_signal); i++)
+sta_info.c:406:		ewma_signal_init(&sta->rx_stats_avg.chain_signal[i]);
+sta_info.c:413:		txq_data = kcalloc(ARRAY_SIZE(sta->sta.txq), size, gfp);
+sta_info.c:417:		for (i = 0; i < ARRAY_SIZE(sta->sta.txq); i++) {
+sta_info.c:430:		skb_queue_head_init(&sta->ps_tx_buf[i]);
+sta_info.c:431:		skb_queue_head_init(&sta->tx_filtered[i]);
+sta_info.c:432:		init_airtime_info(&sta->airtime[i], &local->airtime[i]);
+sta_info.c:436:		sta->last_seq_ctrl[i] = cpu_to_le16(USHRT_MAX);
+sta_info.c:475:			sta->sta.supp_rates[i] |= BIT(r);
+sta_info.c:479:	sta->sta.smps_mode = IEEE80211_SMPS_OFF;
+sta_info.c:497:			sta->known_smps_mode = IEEE80211_SMPS_OFF;
+sta_info.c:500:			sta->known_smps_mode = IEEE80211_SMPS_STATIC;
+sta_info.c:503:			sta->known_smps_mode = IEEE80211_SMPS_DYNAMIC;
+sta_info.c:510:	sta->sta.max_rc_amsdu_len = IEEE80211_MAX_MPDU_LEN_HT_BA;
+sta_info.c:512:	sta->cparams.ce_threshold = CODEL_DISABLED_THRESHOLD;
+sta_info.c:513:	sta->cparams.target = MS2TIME(20);
+sta_info.c:514:	sta->cparams.interval = MS2TIME(100);
+sta_info.c:515:	sta->cparams.ecn = true;
+sta_info.c:517:	sta_dbg(sdata, "Allocated STA %pM\n", sta->sta.addr);
+sta_info.c:522:	if (sta->sta.txq[0])
+sta_info.c:523:		kfree(to_txq_info(sta->sta.txq[0]));
+sta_info.c:525:	free_percpu(sta->pcpu_rx_stats);
+sta_info.c:527:	kfree(sta->mesh);
+sta_info.c:535:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:545:	if (WARN_ON(ether_addr_equal(sta->sta.addr, sdata->vif.addr) ||
+sta_info.c:546:		    !is_valid_ether_addr(sta->sta.addr)))
+sta_info.c:556:	    ieee80211_find_sta_by_ifaddr(&sdata->local->hw, sta->addr, NULL)) {
+sta_info.c:572:	for (state = IEEE80211_STA_NOTEXIST; state < sta->sta_state; state++) {
+sta_info.c:584:			sta->uploaded = true;
+sta_info.c:591:			   sta->sta.addr, state + 1, err);
+sta_info.c:611:		if (sdata != sta->sdata ||
+sta_info.c:614:		if (!sta->sta.support_p2p_ps) {
+sta_info.c:634:	struct ieee80211_local *local = sta->local;
+sta_info.c:635:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:642:	if (sta_info_get_bss(sdata, sta->sta.addr)) {
+sta_info.c:665:	list_add_tail_rcu(&sta->list, &local->sta_list);
+sta_info.c:674:	if (sta->sta_state >= IEEE80211_STA_ASSOC) {
+sta_info.c:675:		ieee80211_recalc_min_chandef(sta->sdata);
+sta_info.c:676:		if (!sta->sta.support_p2p_ps)
+sta_info.c:677:			ieee80211_recalc_p2p_go_ps_allowed(sta->sdata);
+sta_info.c:687:	cfg80211_new_sta(sdata->dev, sta->sta.addr, sinfo, GFP_KERNEL);
+sta_info.c:690:	sta_dbg(sdata, "Inserted STA %pM\n", sta->sta.addr);
+sta_info.c:702:	list_del_rcu(&sta->list);
+sta_info.c:704:	local->num_sta--;
+sta_info.c:716:	struct ieee80211_local *local = sta->local;
+sta_info.c:790:	struct ieee80211_local *local = sta->local;
+sta_info.c:793:	u8 ignore_for_tim = sta->sta.uapsd_queues;
+sta_info.c:795:	u16 id = sta->sta.aid;
+sta_info.c:797:	if (sta->sdata->vif.type == NL80211_IFTYPE_AP ||
+sta_info.c:798:	    sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN) {
+sta_info.c:799:		if (WARN_ON_ONCE(!sta->sdata->bss))
+sta_info.c:802:		ps = &sta->sdata->bss->ps;
+sta_info.c:804:	} else if (ieee80211_vif_is_mesh(&sta->sdata->vif)) {
+sta_info.c:805:		ps = &sta->sdata->u.mesh.ps;
+sta_info.c:815:	if (sta->dead)
+sta_info.c:836:		indicate_tim |= !skb_queue_empty(&sta->tx_filtered[ac]) ||
+sta_info.c:837:				!skb_queue_empty(&sta->ps_tx_buf[ac]);
+sta_info.c:844:			sta->driver_buffered_tids & tids;
+sta_info.c:846:			sta->txq_buffered_tids & tids;
+sta_info.c:860:	if (local->ops->set_tim && !WARN_ON(sta->dead)) {
+sta_info.c:862:		drv_set_tim(local, &sta->sta, indicate_tim);
+sta_info.c:886:	timeout = (sta->listen_interval *
+sta_info.c:887:		   sta->sdata->vif.bss_conf.beacon_int *
+sta_info.c:909:		spin_lock_irqsave(&sta->tx_filtered[ac].lock, flags);
+sta_info.c:910:		skb = skb_peek(&sta->tx_filtered[ac]);
+sta_info.c:912:			skb = __skb_dequeue(&sta->tx_filtered[ac]);
+sta_info.c:915:		spin_unlock_irqrestore(&sta->tx_filtered[ac].lock, flags);
+sta_info.c:935:		spin_lock_irqsave(&sta->ps_tx_buf[ac].lock, flags);
+sta_info.c:936:		skb = skb_peek(&sta->ps_tx_buf[ac]);
+sta_info.c:938:			skb = __skb_dequeue(&sta->ps_tx_buf[ac]);
+sta_info.c:941:		spin_unlock_irqrestore(&sta->ps_tx_buf[ac].lock, flags);
+sta_info.c:952:		ps_dbg(sta->sdata, "Buffered frame expired (STA %pM)\n",
+sta_info.c:953:		       sta->sta.addr);
+sta_info.c:969:	return !(skb_queue_empty(&sta->ps_tx_buf[ac]) &&
+sta_info.c:970:		 skb_queue_empty(&sta->tx_filtered[ac]));
+sta_info.c:980:	if (!sta->sdata->bss &&
+sta_info.c:981:	    !ieee80211_vif_is_mesh(&sta->sdata->vif))
+sta_info.c:1002:	local = sta->local;
+sta_info.c:1003:	sdata = sta->sdata;
+sta_info.c:1032:		drv_tdls_cancel_channel_switch(local, sdata, &sta->sta);
+sta_info.c:1036:	list_del_rcu(&sta->list);
+sta_info.c:1037:	sta->removed = true;
+sta_info.c:1039:	drv_sta_pre_rcu_remove(local, sta->sdata, sta);
+sta_info.c:1050:	struct ieee80211_local *local = sta->local;
+sta_info.c:1051:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:1063:	if (sta->sta_state == IEEE80211_STA_AUTHORIZED) {
+sta_info.c:1074:	sta->dead = true;
+sta_info.c:1076:	local->num_sta--;
+sta_info.c:1079:	while (sta->sta_state > IEEE80211_STA_NONE) {
+sta_info.c:1080:		ret = sta_info_move_state(sta, sta->sta_state - 1);
+sta_info.c:1087:	if (sta->uploaded) {
+sta_info.c:1093:	sta_dbg(sdata, "Removed STA %pM\n", sta->sta.addr);
+sta_info.c:1098:	cfg80211_del_sta_sinfo(sdata->dev, sta->sta.addr, sinfo, GFP_KERNEL);
+sta_info.c:1103:	ieee80211_destroy_frag_cache(&sta->frags);
+sta_info.c:1208:		if (sdata == sta->sdata ||
+sta_info.c:1209:		    (vlans && sdata->bss == sta->sdata->bss)) {
+sta_info.c:1211:				list_add(&sta->free_list, &free_list);
+sta_info.c:1237:		if (sdata != sta->sdata)
+sta_info.c:1241:			sta_dbg(sta->sdata, "expiring inactive STA %pM\n",
+sta_info.c:1242:				sta->sta.addr);
+sta_info.c:1269:		    !ether_addr_equal(sta->sdata->vif.addr, localaddr))
+sta_info.c:1271:		if (!sta->uploaded)
+sta_info.c:1273:		return &sta->sta;
+sta_info.c:1292:	if (!sta->uploaded)
+sta_info.c:1295:	return &sta->sta;
+sta_info.c:1302:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:1323:	sta->driver_buffered_tids = 0;
+sta_info.c:1324:	sta->txq_buffered_tids = 0;
+sta_info.c:1327:		drv_sta_notify(local, sdata, STA_NOTIFY_AWAKE, &sta->sta);
+sta_info.c:1329:	for (i = 0; i < ARRAY_SIZE(sta->sta.txq); i++) {
+sta_info.c:1330:		if (!sta->sta.txq[i] || !txq_has_queue(sta->sta.txq[i]))
+sta_info.c:1333:		schedule_and_wake_txq(local, to_txq_info(sta->sta.txq[i]));
+sta_info.c:1339:	spin_lock(&sta->ps_lock);
+sta_info.c:1344:		spin_lock_irqsave(&sta->tx_filtered[ac].lock, flags);
+sta_info.c:1345:		skb_queue_splice_tail_init(&sta->tx_filtered[ac], &pending);
+sta_info.c:1346:		spin_unlock_irqrestore(&sta->tx_filtered[ac].lock, flags);
+sta_info.c:1351:		spin_lock_irqsave(&sta->ps_tx_buf[ac].lock, flags);
+sta_info.c:1352:		skb_queue_splice_tail_init(&sta->ps_tx_buf[ac], &pending);
+sta_info.c:1353:		spin_unlock_irqrestore(&sta->ps_tx_buf[ac].lock, flags);
+sta_info.c:1368:	spin_unlock(&sta->ps_lock);
+sta_info.c:1378:	       sta->sta.addr, sta->sta.aid, filtered, buffered);
+sta_info.c:1387:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:1393:	bool qos = sta->sta.wme;
+sta_info.c:1417:	memcpy(nullfunc->addr1, sta->sta.addr, ETH_ALEN);
+sta_info.c:1505:		if (!skb_queue_empty(&sta->tx_filtered[ac]) ||
+sta_info.c:1506:		    !skb_queue_empty(&sta->ps_tx_buf[ac]))
+sta_info.c:1519:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:1537:				sta->driver_buffered_tids & tids;
+sta_info.c:1538:			*driver_release_tids |= sta->txq_buffered_tids & tids;
+sta_info.c:1545:				skb = skb_dequeue(&sta->tx_filtered[ac]);
+sta_info.c:1548:						&sta->ps_tx_buf[ac]);
+sta_info.c:1563:		if (!skb_queue_empty(&sta->tx_filtered[ac]) ||
+sta_info.c:1564:		    !skb_queue_empty(&sta->ps_tx_buf[ac]))
+sta_info.c:1574:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:1748:		if (!sta->sta.txq[0])
+sta_info.c:1751:		for (tid = 0; tid < ARRAY_SIZE(sta->sta.txq); tid++) {
+sta_info.c:1752:			if (!sta->sta.txq[tid] ||
+sta_info.c:1754:			    txq_has_queue(sta->sta.txq[tid]))
+sta_info.c:1765:	u8 ignore_for_response = sta->sta.uapsd_queues;
+sta_info.c:1781:	int n_frames = sta->sta.max_sp;
+sta_info.c:1782:	u8 delivery_enabled = sta->sta.uapsd_queues;
+sta_info.c:1793:	switch (sta->sta.max_sp) {
+sta_info.c:1818:	trace_api_sta_block_awake(sta->local, pubsta, block);
+sta_info.c:1832:		ieee80211_queue_work(hw, &sta->drv_deliver_wk);
+sta_info.c:1837:		ieee80211_queue_work(hw, &sta->drv_deliver_wk);
+sta_info.c:1848:	struct ieee80211_local *local = sta->local;
+sta_info.c:1862:	trace_api_send_eosp_nullfunc(sta->local, pubsta, tid);
+sta_info.c:1865:	more_data = ieee80211_sta_ps_more_data(sta, ~sta->sta.uapsd_queues,
+sta_info.c:1880:	trace_api_sta_set_buffered(sta->local, pubsta, tid, buffered);
+sta_info.c:1883:		set_bit(tid, &sta->driver_buffered_tids);
+sta_info.c:1885:		clear_bit(tid, &sta->driver_buffered_tids);
+sta_info.c:1938:	struct ieee80211_txq *txq = pubsta->txq[tid];
+sta_info.c:1959:				   &sta->airtime[ac].aql_tx_pending);
+sta_info.c:1967:					       &sta->airtime[ac].aql_tx_pending);
+sta_info.c:1969:			atomic_cmpxchg(&sta->airtime[ac].aql_tx_pending,
+sta_info.c:1988:	if (sta->sta_state == new_state)
+sta_info.c:1995:		if (sta->sta_state != IEEE80211_STA_AUTH)
+sta_info.c:1999:		if (sta->sta_state != IEEE80211_STA_NONE &&
+sta_info.c:2000:		    sta->sta_state != IEEE80211_STA_ASSOC)
+sta_info.c:2004:		if (sta->sta_state != IEEE80211_STA_AUTH &&
+sta_info.c:2005:		    sta->sta_state != IEEE80211_STA_AUTHORIZED)
+sta_info.c:2009:		if (sta->sta_state != IEEE80211_STA_ASSOC)
+sta_info.c:2017:	sta_dbg(sta->sdata, "moving STA %pM to state %d\n",
+sta_info.c:2018:		sta->sta.addr, new_state);
+sta_info.c:2025:		int err = drv_sta_state(sta->local, sta->sdata, sta,
+sta_info.c:2026:					sta->sta_state, new_state);
+sta_info.c:2035:		if (sta->sta_state == IEEE80211_STA_AUTH)
+sta_info.c:2036:			clear_bit(WLAN_STA_AUTH, &sta->_flags);
+sta_info.c:2039:		if (sta->sta_state == IEEE80211_STA_NONE) {
+sta_info.c:2040:			set_bit(WLAN_STA_AUTH, &sta->_flags);
+sta_info.c:2041:		} else if (sta->sta_state == IEEE80211_STA_ASSOC) {
+sta_info.c:2042:			clear_bit(WLAN_STA_ASSOC, &sta->_flags);
+sta_info.c:2043:			ieee80211_recalc_min_chandef(sta->sdata);
+sta_info.c:2044:			if (!sta->sta.support_p2p_ps)
+sta_info.c:2045:				ieee80211_recalc_p2p_go_ps_allowed(sta->sdata);
+sta_info.c:2049:		if (sta->sta_state == IEEE80211_STA_AUTH) {
+sta_info.c:2050:			set_bit(WLAN_STA_ASSOC, &sta->_flags);
+sta_info.c:2051:			sta->assoc_at = ktime_get_boottime_ns();
+sta_info.c:2052:			ieee80211_recalc_min_chandef(sta->sdata);
+sta_info.c:2053:			if (!sta->sta.support_p2p_ps)
+sta_info.c:2054:				ieee80211_recalc_p2p_go_ps_allowed(sta->sdata);
+sta_info.c:2055:		} else if (sta->sta_state == IEEE80211_STA_AUTHORIZED) {
+sta_info.c:2056:			ieee80211_vif_dec_num_mcast(sta->sdata);
+sta_info.c:2057:			clear_bit(WLAN_STA_AUTHORIZED, &sta->_flags);
+sta_info.c:2063:		if (sta->sta_state == IEEE80211_STA_ASSOC) {
+sta_info.c:2064:			ieee80211_vif_inc_num_mcast(sta->sdata);
+sta_info.c:2065:			set_bit(WLAN_STA_AUTHORIZED, &sta->_flags);
+sta_info.c:2069:		if (sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN ||
+sta_info.c:2070:		    sta->sdata->vif.type == NL80211_IFTYPE_AP)
+sta_info.c:2071:			cfg80211_send_layer2_update(sta->sdata->dev,
+sta_info.c:2072:						    sta->sta.addr);
+sta_info.c:2078:	sta->sta_state = new_state;
+sta_info.c:2085:	struct ieee80211_sta_ht_cap *ht_cap = &sta->sta.ht_cap;
+sta_info.c:2088:	if (!sta->sta.ht_cap.ht_supported)
+sta_info.c:2091:	if (sta->sta.vht_cap.vht_supported) {
+sta_info.c:2094:			le16_to_cpu(sta->sta.vht_cap.vht_mcs.tx_mcs_map);
+sta_info.c:2121:	struct ieee80211_sta_rx_stats *stats = &sta->rx_stats;
+sta_info.c:2124:	if (!sta->pcpu_rx_stats)
+sta_info.c:2130:		cpustats = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+sta_info.c:2198:	sta_stats_decode_rate(sta->local, rate, rinfo);
+sta_info.c:2220:	struct ieee80211_local *local = sta->local;
+sta_info.c:2224:		tidstats->rx_msdu += sta_get_tidstats_msdu(&sta->rx_stats, tid);
+sta_info.c:2226:		if (sta->pcpu_rx_stats) {
+sta_info.c:2230:				cpurxs = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+sta_info.c:2241:		tidstats->tx_msdu = sta->tx_stats.msdu[tid];
+sta_info.c:2247:		tidstats->tx_msdu_retries = sta->status_stats.msdu_retries[tid];
+sta_info.c:2253:		tidstats->tx_msdu_failed = sta->status_stats.msdu_failed[tid];
+sta_info.c:2262:					 to_txq_info(sta->sta.txq[tid]));
+sta_info.c:2285:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:2302:	drv_sta_statistics(local, sdata, &sta->sta, sinfo);
+sta_info.c:2315:	sinfo->connected_time = ktime_get_seconds() - sta->last_connected;
+sta_info.c:2316:	sinfo->assoc_at = sta->assoc_at;
+sta_info.c:2324:			sinfo->tx_bytes += sta->tx_stats.bytes[ac];
+sta_info.c:2331:			sinfo->tx_packets += sta->tx_stats.packets[ac];
+sta_info.c:2337:		sinfo->rx_bytes += sta_get_stats_bytes(&sta->rx_stats);
+sta_info.c:2339:		if (sta->pcpu_rx_stats) {
+sta_info.c:2343:				cpurxs = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+sta_info.c:2352:		sinfo->rx_packets = sta->rx_stats.packets;
+sta_info.c:2353:		if (sta->pcpu_rx_stats) {
+sta_info.c:2357:				cpurxs = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+sta_info.c:2365:		sinfo->tx_retries = sta->status_stats.retry_count;
+sta_info.c:2370:		sinfo->tx_failed = sta->status_stats.retry_failed;
+sta_info.c:2376:			sinfo->rx_duration += sta->airtime[ac].rx_airtime;
+sta_info.c:2382:			sinfo->tx_duration += sta->airtime[ac].tx_airtime;
+sta_info.c:2387:		sinfo->airtime_weight = sta->airtime[0].weight;
+sta_info.c:2391:	sinfo->rx_dropped_misc = sta->rx_stats.dropped;
+sta_info.c:2392:	if (sta->pcpu_rx_stats) {
+sta_info.c:2396:			cpurxs = per_cpu_ptr(sta->pcpu_rx_stats, cpu);
+sta_info.c:2408:	if (ieee80211_hw_check(&sta->local->hw, SIGNAL_DBM) ||
+sta_info.c:2409:	    ieee80211_hw_check(&sta->local->hw, SIGNAL_UNSPEC)) {
+sta_info.c:2415:		if (!sta->pcpu_rx_stats &&
+sta_info.c:2418:				-ewma_signal_read(&sta->rx_stats_avg.signal);
+sta_info.c:2424:	 * the sta->rx_stats struct, so the check here is fine with and without
+sta_info.c:2431:		if (!sta->pcpu_rx_stats)
+sta_info.c:2440:				-ewma_signal_read(&sta->rx_stats_avg.chain_signal[i]);
+sta_info.c:2445:		sta_set_rate_info_tx(sta, &sta->tx_stats.last_rate,
+sta_info.c:2471:		sinfo->llid = sta->mesh->llid;
+sta_info.c:2472:		sinfo->plid = sta->mesh->plid;
+sta_info.c:2473:		sinfo->plink_state = sta->mesh->plink_state;
+sta_info.c:2476:			sinfo->t_offset = sta->mesh->t_offset;
+sta_info.c:2478:		sinfo->local_pm = sta->mesh->local_pm;
+sta_info.c:2479:		sinfo->peer_pm = sta->mesh->peer_pm;
+sta_info.c:2480:		sinfo->nonpeer_pm = sta->mesh->nonpeer_pm;
+sta_info.c:2481:		sinfo->connected_to_gate = sta->mesh->connected_to_gate;
+sta_info.c:2482:		sinfo->connected_to_as = sta->mesh->connected_to_as;
+sta_info.c:2508:	if (sta->sta.wme)
+sta_info.c:2527:	    sta->status_stats.ack_signal_filled) {
+sta_info.c:2528:		sinfo->ack_signal = sta->status_stats.last_ack_signal;
+sta_info.c:2533:	    sta->status_stats.ack_signal_filled) {
+sta_info.c:2536:				&sta->status_stats.avg_ack_signal);
+sta_info.c:2550:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+sta_info.c:2560:		thr = ref->ops->get_expected_throughput(sta->rate_ctrl_priv);
+sta_info.c:2571:	if (!sta->status_stats.last_ack ||
+sta_info.c:2572:	    time_after(stats->last_rx, sta->status_stats.last_ack))
+sta_info.c:2574:	return sta->status_stats.last_ack;
+sta_info.c:2579:	if (!sta->sdata->local->ops->wake_tx_queue)
+sta_info.c:2582:	if (thr && thr < STA_SLOW_THRESHOLD * sta->local->num_sta) {
+sta_info.c:2583:		sta->cparams.target = MS2TIME(50);
+sta_info.c:2584:		sta->cparams.interval = MS2TIME(300);
+sta_info.c:2585:		sta->cparams.ecn = false;
+sta_info.c:2587:		sta->cparams.target = MS2TIME(20);
+sta_info.c:2588:		sta->cparams.interval = MS2TIME(100);
+sta_info.c:2589:		sta->cparams.ecn = true;
+mesh_hwmp.c:308:	ewma_mesh_fail_avg_add(&sta->mesh->fail_avg, failed * 100);
+mesh_hwmp.c:309:	if (ewma_mesh_fail_avg_read(&sta->mesh->fail_avg) >
+mesh_hwmp.c:313:	sta_set_rate_info_tx(sta, &sta->tx_stats.last_rate, &rinfo);
+mesh_hwmp.c:314:	ewma_mesh_tx_rate_avg_add(&sta->mesh->tx_rate_avg,
+mesh_hwmp.c:329:		ewma_mesh_fail_avg_read(&sta->mesh->fail_avg);
+mesh_hwmp.c:331:	if (sta->mesh->plink_state != NL80211_PLINK_ESTAB)
+mesh_hwmp.c:347:		rate = ewma_mesh_tx_rate_avg_read(&sta->mesh->tx_rate_avg);
+mesh_hwmp.c:500:			ewma_mesh_fail_avg_init(&sta->mesh->fail_avg);
+mesh_hwmp.c:502:			ewma_mesh_fail_avg_add(&sta->mesh->fail_avg, 1);
+mesh_hwmp.c:546:			ewma_mesh_fail_avg_init(&sta->mesh->fail_avg);
+mesh_hwmp.c:548:			ewma_mesh_fail_avg_add(&sta->mesh->fail_avg, 1);
+mesh_hwmp.c:787:		    ether_addr_equal(ta, sta->sta.addr) &&
+mesh_hwmp.c:922:	if (!sta || sta->mesh->plink_state != NL80211_PLINK_ESTAB) {
+mesh_hwmp.c:1198:	if (!sta || sta->mesh->plink_state != NL80211_PLINK_ESTAB) {
+ieee80211_i.h:1645:		return &sta->airtime[txq->ac];
+mesh_ps.c:20:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+mesh_ps.c:34:	ieee80211_fill_mesh_addresses(nullfunc, &fc, sta->sta.addr,
+mesh_ps.c:40:	memcpy(nullfunc->addr1, sta->sta.addr, ETH_ALEN);
+mesh_ps.c:59:	mps_dbg(sta->sdata, "announcing peer-specific power mode to %pM\n",
+mesh_ps.c:60:		sta->sta.addr);
+mesh_ps.c:69:	ieee80211_tx_skb(sta->sdata, skb);
+mesh_ps.c:92:		if (sdata != sta->sdata)
+mesh_ps.c:95:		switch (sta->mesh->plink_state) {
+mesh_ps.c:102:			if (sta->mesh->local_pm == NL80211_MESH_POWER_LIGHT_SLEEP)
+mesh_ps.c:104:			else if (sta->mesh->local_pm == NL80211_MESH_POWER_DEEP_SLEEP)
+mesh_ps.c:154:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+mesh_ps.c:156:	if (sta->mesh->local_pm == pm)
+mesh_ps.c:160:		pm, sta->sta.addr);
+mesh_ps.c:162:	sta->mesh->local_pm = pm;
+mesh_ps.c:168:	if (sta->mesh->plink_state == NL80211_PLINK_ESTAB)
+mesh_ps.c:200:	    sta->mesh->plink_state == NL80211_PLINK_ESTAB)
+mesh_ps.c:201:		pm = sta->mesh->local_pm;
+mesh_ps.c:237:	if (sta->sta_state < IEEE80211_STA_ASSOC)
+mesh_ps.c:244:	if (sta->mesh->plink_state == NL80211_PLINK_ESTAB &&
+mesh_ps.c:245:	    sta->mesh->peer_pm != NL80211_MESH_POWER_UNKNOWN)
+mesh_ps.c:246:		pm = sta->mesh->peer_pm;
+mesh_ps.c:248:		pm = sta->mesh->nonpeer_pm;
+mesh_ps.c:253:	if (sta->mesh->plink_state != NL80211_PLINK_ESTAB) {
+mesh_ps.c:266:		atomic_inc(&sta->sdata->u.mesh.ps.num_sta_ps);
+mesh_ps.c:267:		mps_dbg(sta->sdata, "start PS buffering frames towards %pM\n",
+mesh_ps.c:268:			sta->sta.addr);
+mesh_ps.c:299:	if (sta->mesh->peer_pm == pm)
+mesh_ps.c:302:	mps_dbg(sta->sdata, "STA %pM enters mode %d\n",
+mesh_ps.c:303:		sta->sta.addr, pm);
+mesh_ps.c:305:	sta->mesh->peer_pm = pm;
+mesh_ps.c:320:	if (sta->mesh->nonpeer_pm == pm)
+mesh_ps.c:323:	mps_dbg(sta->sdata, "STA %pM sets non-peer mode to %d\n",
+mesh_ps.c:324:		sta->sta.addr, pm);
+mesh_ps.c:326:	sta->mesh->nonpeer_pm = pm;
+mesh_ps.c:365:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+mesh_ps.c:399:		rspi ? " RSPI" : "", eosp ? " EOSP" : "", sta->sta.addr);
+mesh_ps.c:416:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+mesh_ps.c:429:		sta->sta.addr);
+mesh_ps.c:453:	struct ieee80211_local *local = sta->sdata->local;
+mesh_ps.c:464:			skb = skb_dequeue(&sta->tx_filtered[ac]);
+mesh_ps.c:467:					&sta->ps_tx_buf[ac]);
+mesh_ps.c:477:		if (!skb_queue_empty(&sta->tx_filtered[ac]) ||
+mesh_ps.c:478:		    !skb_queue_empty(&sta->ps_tx_buf[ac]))
+mesh_ps.c:492:	mps_dbg(sta->sdata, "sending %d frames to PS STA %pM\n",
+mesh_ps.c:493:		skb_queue_len(&frames), sta->sta.addr);
+mesh_ps.c:557:		else if (sta->mesh->local_pm != NL80211_MESH_POWER_ACTIVE)
+mesh_ps.c:582:	if (sta->mesh->plink_state == NL80211_PLINK_ESTAB)
+mesh_ps.c:584:						   sta->mesh->aid);
+mesh_ps.c:587:		mps_dbg(sta->sdata, "%pM indicates buffered frames\n",
+mesh_ps.c:588:			sta->sta.addr);
+mesh_ps.c:597:			buffer_local += skb_queue_len(&sta->ps_tx_buf[ac]) +
+mesh_ps.c:598:					skb_queue_len(&sta->tx_filtered[ac]);
+mesh_ps.c:603:	if (sta->mesh->plink_state == NL80211_PLINK_ESTAB)
+debugfs_key.c:345:			sta->sdata->name, sta->sta.addr);
+sta_info.h:269: *	tid_start_tx is also protected by sta->lock.
+sta_info.h:686:	return sta->mesh->plink_state;
+sta_info.h:697:	set_bit(flag, &sta->_flags);
+sta_info.h:706:	clear_bit(flag, &sta->_flags);
+sta_info.h:712:	return test_bit(flag, &sta->_flags);
+sta_info.h:721:	return test_and_clear_bit(flag, &sta->_flags);
+sta_info.h:730:	return test_and_set_bit(flag, &sta->_flags);
+sta_info.h:754:	return rcu_dereference_protected(sta->ampdu_mlme.tid_tx[tid],
+sta_info.h:755:					 lockdep_is_held(&sta->lock) ||
+sta_info.h:756:					 lockdep_is_held(&sta->ampdu_mlme.mtx));
+util.c:310:		if (sdata != sta->sdata)
+util.c:313:		for (i = 0; i < ARRAY_SIZE(sta->sta.txq); i++) {
+util.c:314:			struct ieee80211_txq *txq = sta->sta.txq[i];
+util.c:858:		if (!sta->uploaded)
+util.c:861:		iterator(data, &sta->sta);
+util.c:2245:		if (!sta->uploaded || sta->sdata != sdata)
+util.c:2249:		     state < sta->sta_state; state++)
+util.c:2250:			WARN_ON(drv_sta_state(local, sta->sdata, sta, state,
+util.c:2580:		if (!sta->uploaded)
+util.c:2583:		if (sta->sdata->vif.type != NL80211_IFTYPE_AP &&
+util.c:2584:		    sta->sdata->vif.type != NL80211_IFTYPE_AP_VLAN)
+util.c:2588:		     state < sta->sta_state; state++)
+util.c:2589:			WARN_ON(drv_sta_state(local, sta->sdata, sta, state,
+rate.c:32:	struct ieee80211_local *local = sta->sdata->local;
+rate.c:33:	struct rate_control_ref *ref = sta->rate_ctrl;
+rate.c:34:	struct ieee80211_sta *ista = &sta->sta;
+rate.c:35:	void *priv_sta = sta->rate_ctrl_priv;
+rate.c:46:	chanctx_conf = rcu_dereference(sta->sdata->vif.chanctx_conf);
+rate.c:61:	spin_lock_bh(&sta->rate_ctrl_lock);
+rate.c:64:	spin_unlock_bh(&sta->rate_ctrl_lock);
+rate.c:75:	void *priv_sta = sta->rate_ctrl_priv;
+rate.c:80:	spin_lock_bh(&sta->rate_ctrl_lock);
+rate.c:88:	spin_unlock_bh(&sta->rate_ctrl_lock);
+rate.c:96:	struct ieee80211_sta *ista = &sta->sta;
+rate.c:97:	void *priv_sta = sta->rate_ctrl_priv;
+rate.c:103:		chanctx_conf = rcu_dereference(sta->sdata->vif.chanctx_conf);
+rate.c:109:		spin_lock_bh(&sta->rate_ctrl_lock);
+rate.c:112:		spin_unlock_bh(&sta->rate_ctrl_lock);
+rate.c:115:	drv_sta_rc_update(local, sta->sdata, &sta->sta, changed);
+rate.c:373:		  sta ? sta->addr : NULL,
+rate.c:374:		  sta ? sta->supp_rates[sband->band] : -1,
+rate.c:408:			if (ieee80211_vif_is_mesh(&sta->sdata->vif))
+rate.c:718:		ratetbl = rcu_dereference(sta->rates);
+rate.c:784:		*mask &= sta->supp_rates[sband->band];
+rate.c:786:			mcs_mask[i] &= sta->ht_cap.mcs.rx_mask[i];
+rate.c:788:		sta_vht_cap = sta->vht_cap.vht_mcs.rx_mcs_map;
+rate.c:808:	if (!rate_control_cap_mask(sta->sdata, sband, &sta->sta, &mask,
+rate.c:812:	chan_width = sta->sdata->vif.bss_conf.chandef.width;
+rate.c:908:	if (rate_control_send_low(sta ? &sta->sta : NULL, txrc))
+rate.c:915:		ista = &sta->sta;
+rate.c:916:		priv_sta = sta->rate_ctrl_priv;
+rate.c:920:		spin_lock_bh(&sta->rate_ctrl_lock);
+rate.c:922:		spin_unlock_bh(&sta->rate_ctrl_lock);
+rate.c:943:	sband = ieee80211_get_sband(sta->sdata);
+rate.c:953:	old = rcu_dereference_protected(pubsta->rates, true);
+rate.c:954:	rcu_assign_pointer(pubsta->rates, rates);
+rate.c:958:	if (sta->uploaded)
+rate.c:959:		drv_sta_rate_tbl_update(hw_to_local(hw), sta->sdata, pubsta);
+status.c:69:	info->control.vif = &sta->sdata->vif;
+status.c:74:	sta->status_stats.filtered++;
+status.c:145:	    skb_queue_len(&sta->tx_filtered[ac]) < STA_MAX_TX_BUFFER) {
+status.c:146:		skb_queue_tail(&sta->tx_filtered[ac], skb);
+status.c:164:	ps_dbg_ratelimited(sta->sdata,
+status.c:166:			   skb_queue_len(&sta->tx_filtered[ac]),
+status.c:175:	tid_tx = rcu_dereference(sta->ampdu_mlme.tid_tx[tid]);
+status.c:180:	ieee80211_send_bar(&sta->sdata->vif, addr, tid, tid_tx->failed_bar_ssn);
+status.c:186:	struct ieee80211_local *local = sta->local;
+status.c:187:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+status.c:229:			sta->known_smps_mode = smps_mode;
+status.c:238:	tid_tx = rcu_dereference(sta->ampdu_mlme.tid_tx[tid]);
+status.c:769:	if (ieee80211_hw_check(&sta->local->hw, REPORTS_LOW_ACK))
+status.c:777:	sta->status_stats.lost_packets++;
+status.c:778:	if (sta->sta.tdls) {
+status.c:790:	if (sta->status_stats.lost_packets < pkt_thr ||
+status.c:791:	    !time_after(jiffies, sta->status_stats.last_pkt_time + pkt_time))
+status.c:794:	cfg80211_cqm_pktloss_notify(sta->sdata->dev, sta->sta.addr,
+status.c:795:				    sta->status_stats.lost_packets, GFP_ATOMIC);
+status.c:796:	sta->status_stats.lost_packets = 0;
+status.c:913:		shift = ieee80211_vif_get_shift(&sta->sdata->vif);
+status.c:923:		if (ieee80211_vif_is_mesh(&sta->sdata->vif) &&
+status.c:931:			sta->tx_stats.last_rate =
+status.c:943:			ieee80211_send_bar(&sta->sdata->vif, hdr->addr1,
+status.c:977:				sta->status_stats.msdu_failed[tid]++;
+status.c:979:			sta->status_stats.msdu_retries[tid] +=
+status.c:1088:		status.sta = &sta->sta;
+status.c:1112:			sta->tx_stats.last_rate_info = *status->rate;
+status.c:1138:		struct ieee80211_sub_if_data *sdata = sta->sdata;
+status.c:1141:			sta->status_stats.retry_failed++;
+status.c:1142:		sta->status_stats.retry_count += retry_count;
+status.c:1151:				sta->status_stats.last_ack = jiffies;
+status.c:1153:				if (sta->status_stats.lost_packets)
+status.c:1154:					sta->status_stats.lost_packets = 0;
+status.c:1157:				sta->status_stats.last_pkt_time = jiffies;
+status.c:1165:					sta->status_stats.last_ack_signal =
+status.c:1167:					sta->status_stats.ack_signal_filled = true;
+status.c:1168:					ewma_avg_signal_add(&sta->status_stats.avg_ack_signal,
+status.c:1187:		if (ieee80211_vif_is_mesh(&sta->sdata->vif))
+status.c:1234:		sta->tx_stats.last_rate = info->status.rates[0];
+status.c:1254:		status.sta = &sta->sta;
+status.c:1265:	cfg80211_cqm_pktloss_notify(sta->sdata->dev, sta->sta.addr,
+trace.h:25:#define STA_ASSIGN	(sta ? memcpy(__entry->sta_addr, sta->addr, ETH_ALEN) : \
+trace.h:863:		__entry->txpwr = sta->txpwr.power;
+trace.h:864:		__entry->type = sta->txpwr.type;
+trace.h:2706:		__entry->peer_initiator = params->sta->tdls_initiator;
+debugfs.c:267:		if (sta->airtime[ac].aql_limit_low == q_limit_low_old &&
+debugfs.c:268:		    sta->airtime[ac].aql_limit_high == q_limit_high_old) {
+debugfs.c:269:			sta->airtime[ac].aql_limit_low = q_limit_low;
+debugfs.c:270:			sta->airtime[ac].aql_limit_high = q_limit_high;
+wpa.c:296:					  skb->len - hdrlen, rx->sta->sta.addr,
+wpa.c:862:	if (!rx->sta || !rx->sta->cipher_scheme ||
+wpa.c:869:	cs = rx->sta->cipher_scheme;
+wpa.c:1272:	if (rx->sta && rx->sta->cipher_scheme)
+tdls.c:310:	struct cfg80211_chan_def uc = sta->tdls_chandef;
+tdls.c:343:	       (uc.width > sta->tdls_chandef.width &&
+tdls.c:348:	if (!cfg80211_chandef_identical(&uc, &sta->tdls_chandef)) {
+tdls.c:350:			 sta->tdls_chandef.width, uc.width);
+tdls.c:356:		sta->tdls_chandef = uc;
+tdls.c:438:		sta->tdls_chandef = sdata->vif.bss_conf.chandef;
+tdls.c:462:		   ht_cap.ht_supported && sta->sta.ht_cap.ht_supported) {
+tdls.c:464:		memcpy(&ht_cap, &sta->sta.ht_cap, sizeof(ht_cap));
+tdls.c:513:		   vht_cap.vht_supported && sta->sta.vht_cap.vht_supported) {
+tdls.c:515:		memcpy(&vht_cap, &sta->sta.vht_cap, sizeof(vht_cap));
+tdls.c:567:	sta->tdls_chandef = sdata->vif.bss_conf.chandef;
+tdls.c:583:	if (local->hw.queues >= IEEE80211_NUM_ACS && sta->sta.wme)
+tdls.c:606:	if (!ap_sta->sta.ht_cap.ht_supported && sta->sta.ht_cap.ht_supported) {
+tdls.c:612:		ieee80211_ie_build_ht_oper(pos, &sta->sta.ht_cap,
+tdls.c:621:	    sta->sta.vht_cap.vht_supported) {
+tdls.c:630:		ieee80211_ie_build_vht_oper(pos, &sta->sta.vht_cap,
+tdls.c:631:					    &sta->tdls_chandef);
+tdls.c:953:			sta->sta.tdls_initiator = false;
+tdls.c:968:			sta->sta.tdls_initiator = true;
+tdls.c:1272:			if (bw != sta->sta.bandwidth) {
+tdls.c:1273:				sta->sta.bandwidth = bw;
+tdls.c:1296:		if (!sta->sta.tdls || sta->sdata != sdata || !sta->uploaded ||
+tdls.c:1299:		    !sta->sta.ht_cap.ht_supported)
+tdls.c:1324:	tdls_ht = (sta && sta->sta.ht_cap.ht_supported) ||
+tdls.c:1493:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+tdls.c:1525:	skb = ieee80211_tdls_build_mgmt_packet_data(sdata, sta->sta.addr,
+tdls.c:1527:					      0, 0, !sta->sta.tdls_initiator,
+tdls.c:1553:		 sta->sta.addr, chandef->chan->center_freq, chandef->width);
+tdls.c:1597:	ret = drv_tdls_channel_switch(local, sdata, &sta->sta, oper_class,
+tdls.c:1632:	drv_tdls_cancel_channel_switch(local, sdata, &sta->sta);
+tdls.c:1643:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+tdls.c:1650:	skb = ieee80211_tdls_build_mgmt_packet_data(sdata, sta->sta.addr,
+tdls.c:1652:					0, 0, !sta->sta.tdls_initiator,
+tdls.c:1678:		 sta->sta.addr);
+tdls.c:1714:	params.sta = &sta->sta;
+tdls.c:1739:	if (local_initiator == sta->sta.tdls_initiator) {
+tdls.c:1880:	params.sta = &sta->sta;
+tdls.c:1885:	if (local_initiator == sta->sta.tdls_initiator) {
+tdls.c:1892:	if (!sta->sta.ht_cap.ht_supported && elems.sec_chan_offs &&
+tdls.c:1963:		if (!sta->sta.tdls || sta->sdata != sdata || !sta->uploaded ||
+tdls.c:1967:		ieee80211_tdls_oper_request(&sdata->vif, sta->sta.addr,
+tdls.c:1981:	if (!sta || !sta->tdls) {
+agg-rx.c:61:	struct ieee80211_local *local = sta->local;
+agg-rx.c:64:		.sta = &sta->sta,
+agg-rx.c:72:	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+agg-rx.c:74:	tid_rx = rcu_dereference_protected(sta->ampdu_mlme.tid_rx[tid],
+agg-rx.c:75:					lockdep_is_held(&sta->ampdu_mlme.mtx));
+agg-rx.c:77:	if (!test_bit(tid, sta->ampdu_mlme.agg_session_valid))
+agg-rx.c:80:	RCU_INIT_POINTER(sta->ampdu_mlme.tid_rx[tid], NULL);
+agg-rx.c:81:	__clear_bit(tid, sta->ampdu_mlme.agg_session_valid);
+agg-rx.c:83:	ht_dbg(sta->sdata,
+agg-rx.c:85:	       sta->sta.addr, tid,
+agg-rx.c:89:	if (drv_ampdu_action(local, sta->sdata, &params))
+agg-rx.c:90:		sdata_info(sta->sdata,
+agg-rx.c:92:			   sta->sta.addr, tid);
+agg-rx.c:96:		ieee80211_send_delba(sta->sdata, sta->sta.addr,
+agg-rx.c:120:	mutex_lock(&sta->ampdu_mlme.mtx);
+agg-rx.c:122:	mutex_unlock(&sta->ampdu_mlme.mtx);
+agg-rx.c:141:			set_bit(i, sta->ampdu_mlme.tid_rx_stop_requested);
+agg-rx.c:143:	ieee80211_queue_work(&sta->local->hw, &sta->ampdu_mlme.work);
+agg-rx.c:165:	ht_dbg(sta->sdata, "RX session timer expired on %pM tid %d\n",
+agg-rx.c:166:	       sta->sta.addr, tid);
+agg-rx.c:168:	set_bit(tid, sta->ampdu_mlme.tid_rx_timer_expired);
+agg-rx.c:169:	ieee80211_queue_work(&sta->local->hw, &sta->ampdu_mlme.work);
+agg-rx.c:220:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+agg-rx.c:263:	if (sta->sta.he_cap.has_he && addbaext)
+agg-rx.c:275:	struct ieee80211_local *local = sta->sdata->local;
+agg-rx.c:278:		.sta = &sta->sta,
+agg-rx.c:290:		ht_dbg(sta->sdata,
+agg-rx.c:292:		       sta->sta.addr, tid);
+agg-rx.c:296:	if (!sta->sta.ht_cap.ht_supported &&
+agg-rx.c:297:	    sta->sdata->vif.bss_conf.chandef.chan->band != NL80211_BAND_6GHZ) {
+agg-rx.c:298:		ht_dbg(sta->sdata,
+agg-rx.c:300:		       sta->sta.addr, tid);
+agg-rx.c:306:		ht_dbg(sta->sdata,
+agg-rx.c:308:		       sta->sta.addr, tid);
+agg-rx.c:312:	if (sta->sta.he_cap.has_he)
+agg-rx.c:322:	     (!(sta->sta.ht_cap.cap & IEEE80211_HT_CAP_DELAY_BA))) ||
+agg-rx.c:325:		ht_dbg_ratelimited(sta->sdata,
+agg-rx.c:327:				   sta->sta.addr, tid, ba_policy, buf_size);
+agg-rx.c:335:	if (buf_size > sta->sta.max_rx_aggregation_subframes)
+agg-rx.c:336:		buf_size = sta->sta.max_rx_aggregation_subframes;
+agg-rx.c:339:	ht_dbg(sta->sdata, "AddBA Req buf_size=%d for %pM\n",
+agg-rx.c:340:	       buf_size, sta->sta.addr);
+agg-rx.c:343:	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+agg-rx.c:345:	if (test_bit(tid, sta->ampdu_mlme.agg_session_valid)) {
+agg-rx.c:346:		if (sta->ampdu_mlme.tid_rx_token[tid] == dialog_token) {
+agg-rx.c:349:			ht_dbg_ratelimited(sta->sdata,
+agg-rx.c:351:					   sta->sta.addr, tid);
+agg-rx.c:358:			tid_rx = rcu_dereference(sta->ampdu_mlme.tid_rx[tid]);
+agg-rx.c:367:		ht_dbg_ratelimited(sta->sdata,
+agg-rx.c:369:				   sta->sta.addr, tid);
+agg-rx.c:378:		ret = drv_ampdu_action(local, sta->sdata, &params);
+agg-rx.c:379:		ht_dbg(sta->sdata,
+agg-rx.c:381:		       sta->sta.addr, tid, ret);
+agg-rx.c:417:	ret = drv_ampdu_action(local, sta->sdata, &params);
+agg-rx.c:418:	ht_dbg(sta->sdata, "Rx A-MPDU request on %pM tid %d result %d\n",
+agg-rx.c:419:	       sta->sta.addr, tid, ret);
+agg-rx.c:441:	rcu_assign_pointer(sta->ampdu_mlme.tid_rx[tid], tid_agg_rx);
+agg-rx.c:450:		__set_bit(tid, sta->ampdu_mlme.agg_session_valid);
+agg-rx.c:451:		__clear_bit(tid, sta->ampdu_mlme.unexpected_agg);
+agg-rx.c:452:		sta->ampdu_mlme.tid_rx_token[tid] = dialog_token;
+agg-rx.c:456:		ieee80211_send_addba_resp(sta, sta->sta.addr, tid,
+agg-rx.c:468:	mutex_lock(&sta->ampdu_mlme.mtx);
+agg-rx.c:472:	mutex_unlock(&sta->ampdu_mlme.mtx);
+agg-rx.c:523:	set_bit(tid, sta->ampdu_mlme.tid_rx_manage_offl);
+agg-rx.c:524:	ieee80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+agg-rx.c:542:	set_bit(tid, sta->ampdu_mlme.tid_rx_timer_expired);
+agg-rx.c:543:	ieee80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+key.c:166:	if (sta && !sta->uploaded)
+key.c:181:			  sta ? &sta->sta : NULL, &key->conf);
+key.c:204:			  sta ? sta->sta.addr : bcast_addr, ret);
+key.c:256:			  sta ? &sta->sta : NULL, &key->conf);
+key.c:262:			  sta ? sta->sta.addr : bcast_addr, ret);
+key.c:274:	sta->ptk_idx = key->conf.keyidx;
+key.c:300:		if (sta->ptk_idx != INVALID_PTK_KEYIDX &&
+key.c:312:			mutex_lock(&sta->ampdu_mlme.mtx);
+key.c:316:			mutex_unlock(&sta->ampdu_mlme.mtx);
+key.c:338:					    sta->sta.addr);
+key.c:474:			rcu_assign_pointer(sta->ptk[idx], new);
+key.c:479:			rcu_assign_pointer(sta->gtk[idx], new);
+key.c:819:		old_key = key_mtx_dereference(sdata->local, sta->ptk[idx]);
+key.c:820:		alt_key = key_mtx_dereference(sdata->local, sta->ptk[idx ^ 1]);
+key.c:829:		old_key = key_mtx_dereference(sdata->local, sta->gtk[idx]);
+key.c:941:			     key->sta ? &key->sta->sta : NULL,
+key.c:948:				     key->sta ? &key->sta->sta : NULL,
+key.c:969:		if (key->sta && key->sta->removed)
+key.c:975:		     key->sta ? &key->sta->sta : NULL,
+key.c:1079:	for (i = 0; i < ARRAY_SIZE(sta->gtk); i++) {
+key.c:1080:		key = key_mtx_dereference(local, sta->gtk[i]);
+key.c:1091:		key = key_mtx_dereference(local, sta->ptk[i]);
+vht.c:121:	struct ieee80211_sta_vht_cap *vht_cap = &sta->sta.vht_cap;
+vht.c:128:	if (!sta->sta.ht_cap.ht_supported)
+vht.c:290:			   sta->addr);
+vht.c:298:		sta->cur_max_bandwidth = IEEE80211_STA_RX_BW_160;
+vht.c:301:		sta->cur_max_bandwidth = IEEE80211_STA_RX_BW_80;
+vht.c:313:			sta->cur_max_bandwidth = IEEE80211_STA_RX_BW_160;
+vht.c:316:	sta->sta.bandwidth = ieee80211_sta_cur_vht_bw(sta);
+vht.c:320:		sta->sta.max_amsdu_len = IEEE80211_MAX_MPDU_LEN_VHT_11454;
+vht.c:323:		sta->sta.max_amsdu_len = IEEE80211_MAX_MPDU_LEN_VHT_7991;
+vht.c:327:		sta->sta.max_amsdu_len = IEEE80211_MAX_MPDU_LEN_VHT_3895;
+vht.c:335:	struct ieee80211_sta_vht_cap *vht_cap = &sta->sta.vht_cap;
+vht.c:336:	struct ieee80211_sta_he_cap *he_cap = &sta->sta.he_cap;
+vht.c:342:		if (sta->sdata->vif.bss_conf.chandef.chan->band ==
+vht.c:360:		return sta->sta.ht_cap.cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40 ?
+vht.c:383:	struct ieee80211_sta_vht_cap *vht_cap = &sta->sta.vht_cap;
+vht.c:387:		if (!sta->sta.ht_cap.ht_supported)
+vht.c:390:		return sta->sta.ht_cap.cap & IEEE80211_HT_CAP_SUP_WIDTH_20_40 ?
+vht.c:407:	enum ieee80211_sta_rx_bandwidth cur_bw = sta->sta.bandwidth;
+vht.c:408:	struct ieee80211_sta_vht_cap *vht_cap = &sta->sta.vht_cap;
+vht.c:413:		if (!sta->sta.ht_cap.ht_supported)
+vht.c:457:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+vht.c:462:	bw = min(bw, sta->cur_max_bandwidth);
+vht.c:476:	    sta->tdls_chandef.chan)
+vht.c:477:		bw = min(bw, ieee80211_chan_width_to_rx_bw(sta->tdls_chandef.width));
+vht.c:490:	if (sta->sta.rx_nss)
+vht.c:493:	if (sta->sta.he_cap.has_he) {
+vht.c:496:		const struct ieee80211_sta_he_cap *he_cap = &sta->sta.he_cap;
+vht.c:527:	if (sta->sta.ht_cap.ht_supported) {
+vht.c:528:		if (sta->sta.ht_cap.mcs.rx_mask[0])
+vht.c:530:		if (sta->sta.ht_cap.mcs.rx_mask[1])
+vht.c:532:		if (sta->sta.ht_cap.mcs.rx_mask[2])
+vht.c:534:		if (sta->sta.ht_cap.mcs.rx_mask[3])
+vht.c:539:	if (sta->sta.vht_cap.vht_supported) {
+vht.c:543:		rx_mcs_map = le16_to_cpu(sta->sta.vht_cap.vht_mcs.rx_mcs_map);
+vht.c:558:	sta->sta.rx_nss = max_t(u8, 1, rx_nss);
+vht.c:578:	if (sta->sta.rx_nss != nss) {
+vht.c:579:		sta->sta.rx_nss = nss;
+vht.c:588:		sta->cur_max_bandwidth = IEEE80211_STA_RX_BW_20;
+vht.c:592:		sta->cur_max_bandwidth = IEEE80211_STA_RX_BW_40;
+vht.c:596:			sta->cur_max_bandwidth = IEEE80211_STA_RX_BW_160;
+vht.c:598:			sta->cur_max_bandwidth = IEEE80211_STA_RX_BW_80;
+vht.c:602:		sta->cur_max_bandwidth = IEEE80211_STA_RX_BW_160;
+vht.c:607:	if (new_bw != sta->sta.bandwidth) {
+vht.c:608:		sta->sta.bandwidth = new_bw;
+vht.c:615:		cfg80211_sta_opmode_change_notify(sdata->dev, sta->addr,
+mesh_pathtbl.c:89:		memcpy(hdr->addr1, sta->sta.addr, ETH_ALEN);
+mesh_pathtbl.c:91:		ieee80211_mps_set_frame_flags(sta->sdata, sta, hdr);
+mesh_pathtbl.c:483:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+mesh_pathtbl.c:542:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+agg-tx.c:145:	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+agg-tx.c:146:	lockdep_assert_held(&sta->lock);
+agg-tx.c:147:	rcu_assign_pointer(sta->ampdu_mlme.tid_tx[tid], tid_tx);
+agg-tx.c:192:	struct ieee80211_txq *txq = sta->sta.txq[tid];
+agg-tx.c:213:	struct ieee80211_txq *txq = sta->sta.txq[tid];
+agg-tx.c:216:	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+agg-tx.c:231:	schedule_and_wake_txq(sta->sdata->local, txqi);
+agg-tx.c:274:	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+agg-tx.c:275:	lockdep_assert_held(&sta->lock);
+agg-tx.c:289:	ieee80211_agg_splice_packets(sta->sdata, tid_tx, tid);
+agg-tx.c:294:	ieee80211_agg_splice_finish(sta->sdata, tid);
+agg-tx.c:302:	struct ieee80211_local *local = sta->local;
+agg-tx.c:305:		.sta = &sta->sta,
+agg-tx.c:314:	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+agg-tx.c:330:	spin_lock_bh(&sta->lock);
+agg-tx.c:333:	tid_tx = sta->ampdu_mlme.tid_start_tx[tid];
+agg-tx.c:335:	sta->ampdu_mlme.tid_start_tx[tid] = NULL;
+agg-tx.c:339:		spin_unlock_bh(&sta->lock);
+agg-tx.c:348:		spin_unlock_bh(&sta->lock);
+agg-tx.c:352:		ret = drv_ampdu_action(local, sta->sdata, &params);
+agg-tx.c:360:		spin_unlock_bh(&sta->lock);
+agg-tx.c:369:	spin_unlock_bh(&sta->lock);
+agg-tx.c:371:	ht_dbg(sta->sdata, "Tx BA session stop requested for %pM tid %u\n",
+agg-tx.c:372:	       sta->sta.addr, tid);
+agg-tx.c:404:	ret = drv_ampdu_action(local, sta->sdata, &params);
+agg-tx.c:440:		ht_dbg(sta->sdata,
+agg-tx.c:442:		       sta->sta.addr, tid);
+agg-tx.c:446:	ht_dbg(sta->sdata, "addBA response timer expired on %pM tid %d\n",
+agg-tx.c:447:	       sta->sta.addr, tid);
+agg-tx.c:449:	ieee80211_stop_tx_ba_session(&sta->sta, tid);
+agg-tx.c:455:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+agg-tx.c:456:	struct ieee80211_local *local = sta->local;
+agg-tx.c:463:	       sta->sta.addr, tid);
+agg-tx.c:465:	spin_lock_bh(&sta->lock);
+agg-tx.c:466:	sta->ampdu_mlme.last_addba_req_time[tid] = jiffies;
+agg-tx.c:467:	sta->ampdu_mlme.addba_req_num[tid]++;
+agg-tx.c:468:	spin_unlock_bh(&sta->lock);
+agg-tx.c:470:	if (sta->sta.he_cap.has_he) {
+agg-tx.c:483:	ieee80211_send_addba_request(sdata, sta->sta.addr, tid,
+agg-tx.c:493:	struct ieee80211_local *local = sta->local;
+agg-tx.c:494:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+agg-tx.c:496:		.sta = &sta->sta,
+agg-tx.c:524:	params.ssn = sta->tid_seq[tid] >> 4;
+agg-tx.c:539:		       sta->sta.addr, tid);
+agg-tx.c:540:		spin_lock_bh(&sta->lock);
+agg-tx.c:544:		spin_unlock_bh(&sta->lock);
+agg-tx.c:576:	ht_dbg(sta->sdata, "tx session timer expired on %pM tid %d\n",
+agg-tx.c:577:	       sta->sta.addr, tid);
+agg-tx.c:579:	ieee80211_stop_tx_ba_session(&sta->sta, tid);
+agg-tx.c:586:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+agg-tx.c:593:	if (WARN(sta->reserved_tid == tid,
+agg-tx.c:597:	if (!pubsta->ht_cap.ht_supported &&
+agg-tx.c:598:	    sta->sdata->vif.bss_conf.chandef.chan->band != NL80211_BAND_6GHZ)
+agg-tx.c:613:	       pubsta->addr, tid);
+agg-tx.c:625:		       sta->sta.addr, tid);
+agg-tx.c:633:		       sta->sta.addr, tid);
+agg-tx.c:649:	if (sta->sdata->vif.type == NL80211_IFTYPE_ADHOC &&
+agg-tx.c:650:	    !sta->sta.ht_cap.ht_supported) {
+agg-tx.c:653:		       pubsta->addr);
+agg-tx.c:657:	spin_lock_bh(&sta->lock);
+agg-tx.c:660:	if (sta->ampdu_mlme.addba_req_num[tid] > HT_AGG_MAX_RETRIES) {
+agg-tx.c:670:	if (sta->ampdu_mlme.addba_req_num[tid] > HT_AGG_BURST_RETRIES &&
+agg-tx.c:671:	    time_before(jiffies, sta->ampdu_mlme.last_addba_req_time[tid] +
+agg-tx.c:675:		       sta->ampdu_mlme.addba_req_num[tid], sta->sta.addr, tid);
+agg-tx.c:682:	if (tid_tx || sta->ampdu_mlme.tid_start_tx[tid]) {
+agg-tx.c:685:		       sta->sta.addr, tid);
+agg-tx.c:712:	sta->ampdu_mlme.dialog_token_allocator++;
+agg-tx.c:713:	tid_tx->dialog_token = sta->ampdu_mlme.dialog_token_allocator;
+agg-tx.c:719:	sta->ampdu_mlme.tid_start_tx[tid] = tid_tx;
+agg-tx.c:721:	ieee80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+agg-tx.c:725:	spin_unlock_bh(&sta->lock);
+agg-tx.c:735:		.sta = &sta->sta,
+agg-tx.c:742:	lockdep_assert_held(&sta->ampdu_mlme.mtx);
+agg-tx.c:748:	ht_dbg(sta->sdata, "Aggregation is on for %pM tid %d\n",
+agg-tx.c:749:	       sta->sta.addr, tid);
+agg-tx.c:751:	drv_ampdu_action(local, sta->sdata, &params);
+agg-tx.c:757:	spin_lock_bh(&sta->lock);
+agg-tx.c:759:	ieee80211_agg_splice_packets(sta->sdata, tid_tx, tid);
+agg-tx.c:766:	ieee80211_agg_splice_finish(sta->sdata, tid);
+agg-tx.c:768:	spin_unlock_bh(&sta->lock);
+agg-tx.c:776:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+agg-tx.c:834:	ieee80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+agg-tx.c:845:	mutex_lock(&sta->ampdu_mlme.mtx);
+agg-tx.c:849:	mutex_unlock(&sta->ampdu_mlme.mtx);
+agg-tx.c:857:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+agg-tx.c:870:	spin_lock_bh(&sta->lock);
+agg-tx.c:878:	WARN(sta->reserved_tid == tid,
+agg-tx.c:888:	ieee80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+agg-tx.c:891:	spin_unlock_bh(&sta->lock);
+agg-tx.c:899:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+agg-tx.c:904:	       sta->sta.addr, tid);
+agg-tx.c:906:	spin_lock_bh(&sta->lock);
+agg-tx.c:911:		       sta->sta.addr, tid);
+agg-tx.c:922:	spin_unlock_bh(&sta->lock);
+agg-tx.c:928:		ieee80211_send_delba(sdata, sta->sta.addr, tid,
+agg-tx.c:948:	ieee80211_queue_work(&local->hw, &sta->ampdu_mlme.work);
+agg-tx.c:971:	txq = sta->sta.txq[tid];
+agg-tx.c:975:	mutex_lock(&sta->ampdu_mlme.mtx);
+agg-tx.c:982:		ht_dbg(sta->sdata, "wrong addBA response token, %pM tid %d\n",
+agg-tx.c:983:		       sta->sta.addr, tid);
+agg-tx.c:989:	ht_dbg(sta->sdata, "switched off addBA timer for %pM tid %d\n",
+agg-tx.c:990:	       sta->sta.addr, tid);
+agg-tx.c:999:		ht_dbg(sta->sdata,
+agg-tx.c:1001:		       sta->sta.addr, tid);
+agg-tx.c:1025:		sta->ampdu_mlme.addba_req_num[tid] = 0;
+agg-tx.c:1041:	mutex_unlock(&sta->ampdu_mlme.mtx);
+he.c:17:	if (sta->sdata->vif.type == NL80211_IFTYPE_AP ||
+he.c:18:	    sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN) {
+he.c:33:		sta->sta.smps_mode = smps_mode;
+he.c:35:		sta->sta.smps_mode = IEEE80211_SMPS_OFF;
+he.c:41:		sta->sta.max_amsdu_len = IEEE80211_MAX_MPDU_LEN_VHT_11454;
+he.c:44:		sta->sta.max_amsdu_len = IEEE80211_MAX_MPDU_LEN_VHT_7991;
+he.c:48:		sta->sta.max_amsdu_len = IEEE80211_MAX_MPDU_LEN_VHT_3895;
+he.c:52:	sta->sta.he_6ghz_capa = *he_6ghz_capa;
+he.c:113:	struct ieee80211_sta_he_cap *he_cap = &sta->sta.he_cap;
+he.c:156:	sta->cur_max_bandwidth = ieee80211_sta_cap_rx_bw(sta);
+he.c:157:	sta->sta.bandwidth = ieee80211_sta_cur_vht_bw(sta);
+ht.c:241:		sta->sta.max_amsdu_len = IEEE80211_MAX_MPDU_LEN_HT_7935;
+ht.c:243:		sta->sta.max_amsdu_len = IEEE80211_MAX_MPDU_LEN_HT_3839;
+ht.c:246:	changed = memcmp(&sta->sta.ht_cap, &ht_cap, sizeof(ht_cap));
+ht.c:248:	memcpy(&sta->sta.ht_cap, &ht_cap, sizeof(ht_cap));
+ht.c:267:	sta->sta.bandwidth = bw;
+ht.c:269:	sta->cur_max_bandwidth =
+ht.c:273:	if (sta->sdata->vif.type == NL80211_IFTYPE_AP ||
+ht.c:274:	    sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN) {
+ht.c:291:		if (smps_mode != sta->sta.smps_mode)
+ht.c:293:		sta->sta.smps_mode = smps_mode;
+ht.c:295:		sta->sta.smps_mode = IEEE80211_SMPS_OFF;
+ht.c:305:	mutex_lock(&sta->ampdu_mlme.mtx);
+ht.c:314:	mutex_unlock(&sta->ampdu_mlme.mtx);
+ht.c:322:		cancel_work_sync(&sta->ampdu_mlme.work);
+ht.c:324:		mutex_lock(&sta->ampdu_mlme.mtx);
+ht.c:335:		mutex_unlock(&sta->ampdu_mlme.mtx);
+ht.c:350:	mutex_lock(&sta->ampdu_mlme.mtx);
+ht.c:352:		if (test_and_clear_bit(tid, sta->ampdu_mlme.tid_rx_timer_expired))
+ht.c:358:				       sta->ampdu_mlme.tid_rx_stop_requested))
+ht.c:365:				       sta->ampdu_mlme.tid_rx_manage_offl))
+ht.c:371:				       sta->ampdu_mlme.tid_rx_manage_offl))
+ht.c:376:		spin_lock_bh(&sta->lock);
+ht.c:378:		tid_tx = sta->ampdu_mlme.tid_start_tx[tid];
+ht.c:385:			sta->ampdu_mlme.tid_start_tx[tid] = NULL;
+ht.c:387:			if (sta->ampdu_mlme.tid_tx[tid])
+ht.c:391:			spin_unlock_bh(&sta->lock);
+ht.c:396:		spin_unlock_bh(&sta->lock);
+ht.c:411:	mutex_unlock(&sta->ampdu_mlme.mtx);
+debugfs_sta.c:28:				      format_string, sta->field);	\
+debugfs_sta.c:116:			       skb_queue_len(&sta->ps_tx_buf[ac]) +
+debugfs_sta.c:117:			       skb_queue_len(&sta->tx_filtered[ac]));
+debugfs_sta.c:130:			       le16_to_cpu(sta->last_seq_ctrl[i]));
+debugfs_sta.c:142:	struct ieee80211_local *local = sta->local;
+debugfs_sta.c:158:		       codel_time_to_us(sta->cparams.target),
+debugfs_sta.c:159:		       codel_time_to_us(sta->cparams.interval),
+debugfs_sta.c:160:		       sta->cparams.ecn ? "yes" : "no");
+debugfs_sta.c:165:	for (i = 0; i < ARRAY_SIZE(sta->sta.txq); i++) {
+debugfs_sta.c:166:		if (!sta->sta.txq[i])
+debugfs_sta.c:168:		txqi = to_txq_info(sta->sta.txq[i]);
+debugfs_sta.c:201:	struct ieee80211_local *local = sta->sdata->local;
+debugfs_sta.c:214:		rx_airtime += sta->airtime[ac].rx_airtime;
+debugfs_sta.c:215:		tx_airtime += sta->airtime[ac].tx_airtime;
+debugfs_sta.c:216:		v_t[ac] = sta->airtime[ac].v_t;
+debugfs_sta.c:223:		rx_airtime, tx_airtime, sta->airtime[0].weight,
+debugfs_sta.c:235:	struct ieee80211_local *local = sta->sdata->local;
+debugfs_sta.c:240:		sta->airtime[ac].rx_airtime = 0;
+debugfs_sta.c:241:		sta->airtime[ac].tx_airtime = 0;
+debugfs_sta.c:242:		sta->airtime[ac].v_t = 0;
+debugfs_sta.c:254:	struct ieee80211_local *local = sta->sdata->local;
+debugfs_sta.c:267:		q_limit_l[ac] = sta->airtime[ac].aql_limit_low;
+debugfs_sta.c:268:		q_limit_h[ac] = sta->airtime[ac].aql_limit_high;
+debugfs_sta.c:270:		q_depth[ac] = atomic_read(&sta->airtime[ac].aql_tx_pending);
+debugfs_sta.c:306:	sta->airtime[ac].aql_limit_low = q_limit_l;
+debugfs_sta.c:307:	sta->airtime[ac].aql_limit_high = q_limit_h;
+debugfs_sta.c:326:			sta->ampdu_mlme.dialog_token_allocator + 1);
+debugfs_sta.c:333:		tid_rx = rcu_dereference(sta->ampdu_mlme.tid_rx[i]);
+debugfs_sta.c:334:		tid_tx = rcu_dereference(sta->ampdu_mlme.tid_tx[i]);
+debugfs_sta.c:335:		tid_rx_valid = test_bit(i, sta->ampdu_mlme.agg_session_valid);
+debugfs_sta.c:342:					sta->ampdu_mlme.tid_rx_token[i] : 0);
+debugfs_sta.c:415:			ret = ieee80211_start_tx_ba_session(&sta->sta, tid,
+debugfs_sta.c:418:			ret = ieee80211_stop_tx_ba_session(&sta->sta, tid);
+debugfs_sta.c:440:	struct ieee80211_sta_ht_cap *htc = &sta->sta.ht_cap;
+debugfs_sta.c:516:	struct ieee80211_sta_vht_cap *vhtc = &sta->sta.vht_cap;
+debugfs_sta.c:622:	struct ieee80211_sta_he_cap *hec = &sta->sta.he_cap;
+debugfs_sta.c:990:		sta->debugfs_dir, sta, &sta_ ##name## _ops)
+debugfs_sta.c:993:	debugfs_create_ulong(#name, 0400, sta->debugfs_dir, &sta->field);
+debugfs_sta.c:997:	struct ieee80211_local *local = sta->local;
+debugfs_sta.c:998:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+debugfs_sta.c:999:	struct dentry *stations_dir = sta->sdata->debugfs.subdir_stations;
+debugfs_sta.c:1005:	snprintf(mac, sizeof(mac), "%pM", sta->sta.addr);
+debugfs_sta.c:1016:	sta->debugfs_dir = debugfs_create_dir(mac, stations_dir);
+debugfs_sta.c:1040:	debugfs_create_xul("driver_buffered_tids", 0400, sta->debugfs_dir,
+debugfs_sta.c:1041:			   &sta->driver_buffered_tids);
+debugfs_sta.c:1043:	drv_sta_add_debugfs(local, sdata, &sta->sta, sta->debugfs_dir);
+debugfs_sta.c:1048:	debugfs_remove_recursive(sta->debugfs_dir);
+debugfs_sta.c:1049:	sta->debugfs_dir = NULL;
+wme.c:108:	if (sta && sta->reserved_tid == skb->priority)
+wme.c:154:		qos = sta->sta.wme;
+chan.c:202:		if (sta->sta.ht_cap.ht_supported)
+chan.c:235:		if (sdata != sta->sdata &&
+chan.c:236:		    !(sta->sdata->bss && sta->sdata->bss == sdata->bss))
+chan.c:271:			 * The ap's sta->bandwidth is not set yet at this
+chan.c:366:		if (!ieee80211_sdata_running(sta->sdata))
+chan.c:369:		if (rcu_access_pointer(sta->sdata->vif.chanctx_conf) !=
+chan.c:376:		if (new_sta_bw == sta->sta.bandwidth)
+chan.c:381:		if ((new_sta_bw < sta->sta.bandwidth) == !narrowed)
+chan.c:384:		sta->sta.bandwidth = new_sta_bw;
+chan.c:705:		if (!sta->uploaded ||
+chan.c:708:		    !sta->tdls_chandef.chan)
+chan.c:711:		compat = cfg80211_chandef_compatible(&sta->tdls_chandef,
+driver-ops.h:42:		trace_drv_sync_rx_queues(local, sta->sdata, &sta->sta);
+driver-ops.h:266:		ista = &sta->sta;
+driver-ops.h:517:	trace_drv_sta_pre_rcu_remove(local, sdata, &sta->sta);
+driver-ops.h:520:					       &sta->sta);
+driver-ops.h:798:	trace_drv_release_buffered_frames(local, &sta->sta, tids, num_frames,
+driver-ops.h:801:		local->ops->release_buffered_frames(&local->hw, &sta->sta, tids,
+driver-ops.h:813:	trace_drv_allow_buffered_frames(local, &sta->sta, tids, num_frames,
+driver-ops.h:816:		local->ops->allow_buffered_frames(&local->hw, &sta->sta,
+driver-ops.h:1142:	trace_drv_get_expected_throughput(&sta->sta);
+driver-ops.h:1143:	if (local->ops->get_expected_throughput && sta->uploaded)
+driver-ops.h:1144:		ret = local->ops->get_expected_throughput(&local->hw, &sta->sta);
+driver-ops.c:121:	trace_drv_sta_state(local, sdata, &sta->sta, old_state, new_state);
+driver-ops.c:123:		ret = local->ops->sta_state(&local->hw, &sdata->vif, &sta->sta,
+driver-ops.c:127:		ret = drv_sta_add(local, sdata, &sta->sta);
+driver-ops.c:129:			sta->uploaded = true;
+driver-ops.c:130:			if (rcu_access_pointer(sta->sta.rates))
+driver-ops.c:131:				drv_sta_rate_tbl_update(local, sdata, &sta->sta);
+driver-ops.c:135:		drv_sta_remove(local, sdata, &sta->sta);
+driver-ops.c:154:	trace_drv_sta_set_txpwr(local, sdata, &sta->sta);
+driver-ops.c:157:						&sta->sta);
+airtime.c:653:		struct ieee80211_tx_rate *rate = &sta->tx_stats.last_rate;
+airtime.c:654:		struct rate_info *ri = &sta->tx_stats.last_rate_info;
+rc80211_minstrel_ht.c:611:	if (!mi->sta->ht_cap.ht_supported)
+rc80211_minstrel_ht.c:1001:	bool ht_supported = mi->sta->ht_cap.ht_supported;
+rc80211_minstrel_ht.c:1364:	    (mi->sta->smps_mode == IEEE80211_SMPS_DYNAMIC &&
+rc80211_minstrel_ht.c:1424:	if (!mi->sta->vht_cap.vht_supported)
+rc80211_minstrel_ht.c:1453:	mi->sta->max_rc_amsdu_len = minstrel_ht_get_max_amsdu_len(mi);
+rc80211_minstrel_ht.c:1541:	if (sta->ht_cap.ht_supported &&
+rc80211_minstrel_ht.c:1564:	if (sta->ht_cap.ht_supported)
+rc80211_minstrel_ht.c:1584:	struct ieee80211_mcs_info *mcs = &sta->ht_cap.mcs;
+rc80211_minstrel_ht.c:1585:	u16 ht_cap = sta->ht_cap.cap;
+rc80211_minstrel_ht.c:1586:	struct ieee80211_sta_vht_cap *vht_cap = &sta->vht_cap;
+rc80211_minstrel_ht.c:1658:		    sta->bandwidth < IEEE80211_STA_RX_BW_40)
+rc80211_minstrel_ht.c:1664:		if (sta->smps_mode == IEEE80211_SMPS_STATIC && nss > 1)
+rc80211_minstrel_ht.c:1685:			if (sta->bandwidth < IEEE80211_STA_RX_BW_80 ||
+ethtool.c:82:		data[i++] += sta->rx_stats.packets;		\
+ethtool.c:83:		data[i++] += sta->rx_stats.bytes;		\
+ethtool.c:84:		data[i++] += sta->rx_stats.num_duplicates;	\
+ethtool.c:85:		data[i++] += sta->rx_stats.fragments;		\
+ethtool.c:86:		data[i++] += sta->rx_stats.dropped;		\
+ethtool.c:90:		data[i++] += sta->status_stats.filtered;	\
+ethtool.c:91:		data[i++] += sta->status_stats.retry_failed;	\
+ethtool.c:92:		data[i++] += sta->status_stats.retry_count;	\
+ethtool.c:106:		if (!(sta && !WARN_ON(sta->sdata->dev != dev)))
+ethtool.c:115:		data[i++] = sta->sta_state;
+ethtool.c:133:			if (sta->sdata->dev != dev)
+s1g.c:14:	sta->tx_stats.last_rate.flags |= IEEE80211_TX_RC_S1G_MCS;
+s1g.c:15:	sta->rx_stats.last_rate =
+s1g.c:115:	drv_add_twt_setup(sdata->local, sdata, &sta->sta, twt);
+s1g.c:126:	drv_twt_teardown_request(sdata->local, sdata, &sta->sta,
+s1g.c:140:	drv_twt_teardown_request(sdata->local, sdata, &sta->sta, flowid);
+ibss.c:568:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+ibss.c:571:	memcpy(addr, sta->sta.addr, ETH_ALEN);
+ibss.c:579:	if (!sta->sdata->u.ibss.control_port)
+ibss.c:640:	sta->sta.supp_rates[band] = supp_rates |
+ibss.c:659:		if (sta->sdata == sdata &&
+ibss.c:701:		list_del(&sta->list);
+ibss.c:1008:			prev_rates = sta->sta.supp_rates[band];
+ibss.c:1016:			sta->sta.supp_rates[band] = supp_rates |
+ibss.c:1018:			if (sta->sta.supp_rates[band] != prev_rates) {
+ibss.c:1021:					 sta->sta.addr, prev_rates,
+ibss.c:1022:					 sta->sta.supp_rates[band]);
+ibss.c:1032:	if (sta && !sta->sta.wme &&
+ibss.c:1035:		sta->sta.wme = true;
+ibss.c:1046:		enum ieee80211_sta_rx_bandwidth bw = sta->sta.bandwidth;
+ibss.c:1061:			struct ieee80211_sta_vht_cap cap = sta->sta.vht_cap;
+ibss.c:1072:			if (memcmp(&cap, &sta->sta.vht_cap, sizeof(cap)))
+ibss.c:1076:		if (bw != sta->sta.bandwidth)
+ibss.c:1086:		u8 rx_nss = sta->sta.rx_nss;
+ibss.c:1089:		sta->sta.rx_nss = 0;
+ibss.c:1091:		if (sta->sta.rx_nss != rx_nss)
+ibss.c:1094:		drv_sta_rc_update(local, sdata, &sta->sta, changed);
+ibss.c:1238:	sta->sta.supp_rates[band] = supp_rates |
+ibss.c:1242:	list_add(&sta->list, &ifibss->incomplete_stations);
+ibss.c:1260:		if (sdata != sta->sdata)
+ibss.c:1265:		     sta->sta_state != IEEE80211_STA_AUTHORIZED)) {
+ibss.c:1268:			sta_dbg(sta->sdata, "expiring inactive %sSTA %pM\n",
+ibss.c:1269:				sta->sta_state != IEEE80211_STA_AUTHORIZED ?
+ibss.c:1270:				"not authorized " : "", sta->sta.addr);
+ibss.c:1272:			ieee80211_send_deauth_disassoc(sdata, sta->sta.addr,
+ibss.c:1690:		list_del(&sta->list);
+rx.c:224:		sta->rx_stats.packets++;
+rx.c:1387:	tid_agg_rx = rcu_dereference(sta->ampdu_mlme.tid_rx[tid]);
+rx.c:1390:		    !test_bit(tid, rx->sta->ampdu_mlme.agg_session_valid) &&
+rx.c:1391:		    !test_and_set_bit(tid, rx->sta->ampdu_mlme.unexpected_agg))
+rx.c:1392:			ieee80211_send_delba(rx->sdata, rx->sta->sta.addr, tid,
+rx.c:1460:		     rx->sta->last_seq_ctrl[rx->seqno_idx] == hdr->seq_ctrl)) {
+rx.c:1462:		rx->sta->rx_stats.num_duplicates++;
+rx.c:1465:		rx->sta->last_seq_ctrl[rx->seqno_idx] = hdr->seq_ctrl;
+rx.c:1561:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+rx.c:1566:	if (sta->sdata->vif.type == NL80211_IFTYPE_AP ||
+rx.c:1567:	    sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN)
+rx.c:1575:		drv_sta_notify(local, sdata, STA_NOTIFY_SLEEP, &sta->sta);
+rx.c:1577:	       sta->sta.addr, sta->sta.aid);
+rx.c:1581:	if (!sta->sta.txq[0])
+rx.c:1585:		struct ieee80211_txq *txq = sta->sta.txq[tid];
+rx.c:1590:			set_bit(tid, &sta->txq_buffered_tids);
+rx.c:1592:			clear_bit(tid, &sta->txq_buffered_tids);
+rx.c:1598:	ps_dbg(sta->sdata, "STA %pM aid %d exits power save mode\n",
+rx.c:1599:	       sta->sta.addr, sta->sta.aid);
+rx.c:1609:		ps_dbg(sta->sdata, "STA %pM aid %d driver-ps-blocked\n",
+rx.c:1610:		       sta->sta.addr, sta->sta.aid);
+rx.c:1624:	WARN_ON(!ieee80211_hw_check(&sta->local->hw, AP_LINK_PS));
+rx.c:1667:	if (!(sta->sta.uapsd_queues & ieee80211_ac_to_qos_mask[ac]) &&
+rx.c:1713:		ieee80211_sta_pspoll(&rx->sta->sta);
+rx.c:1727:		ieee80211_sta_uapsd_trigger(&rx->sta->sta, tid);
+rx.c:1758:			sta->rx_stats.last_rx = jiffies;
+rx.c:1761:				sta->rx_stats.last_rate =
+rx.c:1765:		sta->rx_stats.last_rx = jiffies;
+rx.c:1772:		sta->rx_stats.last_rx = jiffies;
+rx.c:1774:			sta->rx_stats.last_rate = sta_stats_encode_rate(status);
+rx.c:1777:	sta->rx_stats.fragments++;
+rx.c:1779:	u64_stats_update_begin(&rx->sta->rx_stats.syncp);
+rx.c:1780:	sta->rx_stats.bytes += rx->skb->len;
+rx.c:1781:	u64_stats_update_end(&rx->sta->rx_stats.syncp);
+rx.c:1784:		sta->rx_stats.last_signal = status->signal;
+rx.c:1785:		ewma_signal_add(&sta->rx_stats_avg.signal, -status->signal);
+rx.c:1789:		sta->rx_stats.chains = status->chains;
+rx.c:1796:			sta->rx_stats.chain_signal_last[i] = signal;
+rx.c:1797:			ewma_signal_add(&sta->rx_stats_avg.chain_signal[i],
+rx.c:1810:	if (!ieee80211_hw_check(&sta->local->hw, AP_LINK_PS) &&
+rx.c:1850:					rx->sdata->dev, sta->sta.addr,
+rx.c:1858:		sta->rx_stats.packets++;
+rx.c:1890:		key = rcu_dereference(rx->sta->gtk[idx]);
+rx.c:1894:		key = rcu_dereference(rx->sta->gtk[idx2]);
+rx.c:1951:		int keyid = rx->sta->ptk_idx;
+rx.c:1952:		sta_ptk = rcu_dereference(rx->sta->ptk[keyid]);
+rx.c:1956:			cs = rx->sta->cipher_scheme;
+rx.c:1962:			ptk_idx = rcu_dereference(rx->sta->ptk[keyid]);
+rx.c:2009:			rx->key = rcu_dereference(rx->sta->gtk[mmie_keyidx]);
+rx.c:2032:					key = rcu_dereference(rx->sta->gtk[i]);
+rx.c:2069:			rx->key = rcu_dereference(rx->sta->gtk[keyidx]);
+rx.c:2261:		cache = &rx->sta->frags;
+rx.c:2395:		rx->sta->rx_stats.packets++;
+rx.c:2642:		u64_stats_update_begin(&rx->sta->rx_stats.syncp);
+rx.c:2643:		rx->sta->rx_stats.msdu[rx->seqno_idx]++;
+rx.c:2644:		u64_stats_update_end(&rx->sta->rx_stats.syncp);
+rx.c:3008:				rx->sdata->dev, rx->sta->sta.addr, GFP_ATOMIC);
+rx.c:3089:		if (!test_bit(tid, rx->sta->ampdu_mlme.agg_session_valid) &&
+rx.c:3090:		    !test_and_set_bit(tid, rx->sta->ampdu_mlme.unexpected_agg))
+rx.c:3091:			ieee80211_send_delba(rx->sdata, rx->sta->sta.addr, tid,
+rx.c:3095:		tid_agg_rx = rcu_dereference(rx->sta->ampdu_mlme.tid_rx[tid]);
+rx.c:3102:		event.u.ba.sta = &rx->sta->sta;
+rx.c:3302:		if (!rx->sta->sta.ht_cap.ht_supported)
+rx.c:3342:			if (rx->sta->sta.smps_mode == smps_mode)
+rx.c:3344:			rx->sta->sta.smps_mode = smps_mode;
+rx.c:3354:							  rx->sta->addr,
+rx.c:3366:			if (!(rx->sta->sta.ht_cap.cap &
+rx.c:3376:			rx->sta->cur_max_bandwidth = max_bw;
+rx.c:3379:			if (rx->sta->sta.bandwidth == new_bw)
+rx.c:3382:			rx->sta->sta.bandwidth = new_bw;
+rx.c:3391:							  rx->sta->addr,
+rx.c:3579:		rx->sta->rx_stats.packets++;
+rx.c:3613:			rx->sta->rx_stats.packets++;
+rx.c:3651:		rx->sta->rx_stats.packets++;
+rx.c:3871:			rx->sta->rx_stats.dropped++;
+rx.c:3890:			rx->sta->rx_stats.dropped++;
+rx.c:4001:		.sdata = sta->sdata,
+rx.c:4002:		.local = sta->local,
+rx.c:4009:	tid_agg_rx = rcu_dereference(sta->ampdu_mlme.tid_rx[tid]);
+rx.c:4016:	ieee80211_sta_reorder_release(sta->sdata, tid_agg_rx, &frames);
+rx.c:4023:			.u.ba.sta = &sta->sta,
+rx.c:4053:	rx.sdata = sta->sdata;
+rx.c:4054:	rx.local = sta->local;
+rx.c:4057:	tid_agg_rx = rcu_dereference(sta->ampdu_mlme.tid_rx[tid]);
+rx.c:4069:		ieee80211_release_reorder_frames(sta->sdata, tid_agg_rx,
+rx.c:4074:		ieee80211_release_reorder_frames(sta->sdata, tid_agg_rx, ssn,
+rx.c:4098:	ieee80211_sta_reorder_release(sta->sdata, tid_agg_rx, &frames);
+rx.c:4251:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+rx.c:4280:		if (sta->sta.tdls) {
+rx.c:4291:		if (sdata->u.mgd.use_4addr && !sta->sta.tdls) {
+rx.c:4341:	key = rcu_dereference(sta->ptk[sta->ptk_idx]);
+rx.c:4383:		drv_sta_set_decap_offload(local, sdata, &sta->sta, assign);
+rx.c:4385:	spin_lock_bh(&sta->lock);
+rx.c:4386:	old = rcu_dereference_protected(sta->fast_rx, true);
+rx.c:4387:	rcu_assign_pointer(sta->fast_rx, new);
+rx.c:4388:	spin_unlock_bh(&sta->lock);
+rx.c:4398:	spin_lock_bh(&sta->lock);
+rx.c:4399:	old = rcu_dereference_protected(sta->fast_rx, true);
+rx.c:4400:	RCU_INIT_POINTER(sta->fast_rx, NULL);
+rx.c:4401:	spin_unlock_bh(&sta->lock);
+rx.c:4415:		if (sdata != sta->sdata &&
+rx.c:4416:		    (!sta->sdata->bss || sta->sdata->bss != sdata->bss))
+rx.c:4442:	stats = &sta->rx_stats;
+rx.c:4444:		stats = this_cpu_ptr(sta->pcpu_rx_stats);
+rx.c:4450:			ewma_signal_add(&sta->rx_stats_avg.signal,
+rx.c:4466:				ewma_signal_add(&sta->rx_stats_avg.chain_signal[i],
+rx.c:4542:	struct ieee80211_sta_rx_stats *stats = &sta->rx_stats;
+rx.c:4642:		stats = this_cpu_ptr(sta->pcpu_rx_stats);
+rx.c:4672:		fast_rx = rcu_dereference(rx->sta->fast_rx);
+rx.c:4721:	rx.sdata = rx.sta->sdata;
+rx.c:4723:	fast_rx = rcu_dereference(rx.sta->fast_rx);
+rx.c:4790:			rx.sdata = rx.sta->sdata;
+rx.c:4805:			rx.sdata = prev_sta->sdata;
+rx.c:4813:			rx.sdata = prev_sta->sdata;
+rate.h:40:	spin_lock_init(&sta->rate_ctrl_lock);
+rate.h:41:	return ref->ops->alloc_sta(ref->priv, &sta->sta, gfp);
+rate.h:46:	struct rate_control_ref *ref = sta->rate_ctrl;
+rate.h:47:	struct ieee80211_sta *ista = &sta->sta;
+rate.h:48:	void *priv_sta = sta->rate_ctrl_priv;
+rate.h:56:	struct rate_control_ref *ref = sta->rate_ctrl;
+rate.h:57:	if (ref && sta->debugfs_dir && ref->ops->add_sta_debugfs)
+rate.h:58:		ref->ops->add_sta_debugfs(ref->priv, sta->rate_ctrl_priv,
+rate.h:59:					  sta->debugfs_dir);
+cfg.c:180:			drv_sta_set_4addr(local, sdata, &sta->sta,
+cfg.c:391:	if (sta->ptk_idx == key_idx)
+cfg.c:395:	key = key_mtx_dereference(local, sta->ptk[key_idx]);
+cfg.c:511:		sta->cipher_scheme = cs;
+cfg.c:541:			key = key_mtx_dereference(local, sta->ptk[key_idx]);
+cfg.c:543:			key = key_mtx_dereference(local, sta->gtk[key_idx]);
+cfg.c:589:			key = rcu_dereference(sta->ptk[key_idx]);
+cfg.c:593:			key = rcu_dereference(sta->gtk[key_idx]);
+cfg.c:729:		int shift = ieee80211_vif_get_shift(&sta->sdata->vif);
+cfg.c:732:		sband = ieee80211_get_sband(sta->sdata);
+cfg.c:764:		memcpy(mac, sta->sta.addr, ETH_ALEN);
+cfg.c:1417:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+cfg.c:1423:			if (sta->mesh->plink_state != NL80211_PLINK_ESTAB)
+cfg.c:1425:			sta->mesh->plink_state = params->plink_state;
+cfg.c:1426:			sta->mesh->aid = params->peer_aid;
+cfg.c:1432:			ewma_mesh_tx_rate_avg_init(&sta->mesh->tx_rate_avg);
+cfg.c:1434:			ewma_mesh_tx_rate_avg_add(&sta->mesh->tx_rate_avg, 10);
+cfg.c:1443:			if (sta->mesh->plink_state == NL80211_PLINK_ESTAB)
+cfg.c:1445:			sta->mesh->plink_state = params->plink_state;
+cfg.c:1485:		struct airtime_info *air_info = &sta->airtime[ac];
+cfg.c:1492:			    !sta->sta.txq[tid] ||
+cfg.c:1498:			txqi = to_txq_info(sta->sta.txq[tid]);
+cfg.c:1515:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+cfg.c:1550:		sta->sta.wme = set & BIT(NL80211_STA_FLAG_WME);
+cfg.c:1570:		sta->sta.mfp = !!(set & BIT(NL80211_STA_FLAG_MFP));
+cfg.c:1599:		sta->sta.uapsd_queues = params->uapsd_queues;
+cfg.c:1600:		sta->sta.max_sp = params->max_sp;
+cfg.c:1618:			sta->sta.max_amsdu_subframes = 32;
+cfg.c:1621:			sta->sta.max_amsdu_subframes = 16;
+cfg.c:1624:			sta->sta.max_amsdu_subframes = 8;
+cfg.c:1627:			sta->sta.max_amsdu_subframes = 0;
+cfg.c:1636:		sta->sta.aid = params->aid;
+cfg.c:1647:		sta->listen_interval = params->listen_interval;
+cfg.c:1650:		sta->sta.txpwr.type = params->txpwr.type;
+cfg.c:1652:			sta->sta.txpwr.power = params->txpwr.power;
+cfg.c:1662:					 &sta->sta.supp_rates[sband->band]);
+cfg.c:1690:		sta->sta.support_p2p_ps = params->support_p2p_ps;
+cfg.c:1744:		sta->sta.tdls = true;
+cfg.c:1833:	if (params->vlan && params->vlan != sta->sdata->dev) {
+cfg.c:1844:			drv_sta_set_4addr(local, sta->sdata, &sta->sta, true);
+cfg.c:1847:		if (sta->sdata->vif.type == NL80211_IFTYPE_AP_VLAN &&
+cfg.c:1848:		    sta->sdata->u.vlan.sta) {
+cfg.c:1850:			RCU_INIT_POINTER(sta->sdata->u.vlan.sta, NULL);
+cfg.c:1854:			ieee80211_vif_dec_num_mcast(sta->sdata);
+cfg.c:1856:		sta->sdata = vlansdata;
+cfg.c:1860:			ieee80211_vif_inc_num_mcast(sta->sdata);
+cfg.c:1861:			cfg80211_send_layer2_update(sta->sdata->dev,
+cfg.c:1862:						    sta->sta.addr);
+cfg.c:1960:		memcpy(next_hop, next_hop_sta->sta.addr, ETH_ALEN);
+cfg.c:2845:		if (!sta->sta.tdls || sta->sdata != sdata || !sta->uploaded ||
+cfg.c:3692:		qos = sta->sta.wme;
+cfg.c:3722:	memcpy(nullfunc->addr1, sta->sta.addr, ETH_ALEN);
+cfg.c:4114:	ret = drv_set_tid_config(sdata->local, sdata, &sta->sta, tid_conf);
+cfg.c:4141:	ret = drv_reset_tid_config(sdata->local, sdata, &sta->sta, tids);
+tx.c:379:			skb = skb_dequeue(&sta->ps_tx_buf[ac]);
+tx.c:380:			total += skb_queue_len(&sta->ps_tx_buf[ac]);
+tx.c:496:		ps_dbg(sta->sdata, "STA %pM aid %d: PS buffer for AC %d\n",
+tx.c:497:		       sta->sta.addr, sta->sta.aid, ac);
+tx.c:502:		spin_lock(&sta->ps_lock);
+tx.c:511:			spin_unlock(&sta->ps_lock);
+tx.c:515:		if (skb_queue_len(&sta->ps_tx_buf[ac]) >= STA_MAX_TX_BUFFER) {
+tx.c:516:			struct sk_buff *old = skb_dequeue(&sta->ps_tx_buf[ac]);
+tx.c:519:			       sta->sta.addr, ac);
+tx.c:528:		skb_queue_tail(&sta->ps_tx_buf[ac], tx->skb);
+tx.c:529:		spin_unlock(&sta->ps_lock);
+tx.c:546:		       sta->sta.addr);
+tx.c:592:	    (key = rcu_dereference(tx->sta->ptk[tx->sta->ptk_idx])))
+tx.c:730:		 !rate_usable_index_exists(sband, &tx->sta->sta),
+tx.c:746:		ratetbl = rcu_dereference(tx->sta->sta.rates);
+tx.c:770:			tx->sta->tx_stats.last_rate = txrc.reported_rate;
+tx.c:772:		tx->sta->tx_stats.last_rate = txrc.reported_rate;
+tx.c:789:	u16 *seq = &sta->tid_seq[tid];
+tx.c:839:			tx->sta->tx_stats.msdu[IEEE80211_NUM_TIDS]++;
+tx.c:853:	tx->sta->tx_stats.msdu[tid]++;
+tx.c:1006:		tx->sta->tx_stats.bytes[ac] += skb->len;
+tx.c:1009:		tx->sta->tx_stats.packets[ac]++;
+tx.c:1095:	} else if (!tx->sta->sta.txq[tid]) {
+tx.c:1096:		spin_lock(&tx->sta->lock);
+tx.c:1126:				ps_dbg(tx->sta->sdata,
+tx.c:1128:				       tx->sta->sta.addr, tx->sta->sta.aid);
+tx.c:1137:		spin_unlock(&tx->sta->lock);
+tx.c:1161:	if (!sta || !sta->sta.ht_cap.ht_supported ||
+tx.c:1162:	    !sta->sta.wme || skb_get_queue_mapping(skb) == IEEE80211_AC_VO ||
+tx.c:1167:	if (likely(sta->ampdu_mlme.tid_tx[tid]))
+tx.c:1170:	ieee80211_start_tx_ba_session(&sta->sta, tid, 0);
+tx.c:1228:		tid_tx = rcu_dereference(tx->sta->ampdu_mlme.tid_tx[tid]);
+tx.c:1231:			tid_tx = rcu_dereference(tx->sta->ampdu_mlme.tid_tx[tid]);
+tx.c:1288:		    sta && sta->uploaded) {
+tx.c:1293:			txq = sta->sta.txq[IEEE80211_NUM_TIDS];
+tx.c:1298:		if (!sta->uploaded)
+tx.c:1301:		txq = sta->sta.txq[tid];
+tx.c:1381:		cparams = &sta->cparams;
+tx.c:1511:	txqi->txq.sta = &sta->sta;
+tx.c:1513:	sta->sta.txq[tid] = &txqi->txq;
+tx.c:1710:		control.sta = sta ? &sta->sta : NULL;
+tx.c:1738:	if (sta && !sta->uploaded)
+tx.c:1889:			*sta = &tx.sta->sta;
+tx.c:2593:			memcpy(hdr.addr1, sta->sta.addr, ETH_ALEN);
+tx.c:2599:			wme_sta = sta->sta.wme;
+tx.c:2779:		wme_sta = sta->sta.wme;
+tx.c:2921: * checks that are needed to get the sta->fast_tx pointer assigned, after which
+tx.c:2940:	struct ieee80211_local *local = sta->local;
+tx.c:2941:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+tx.c:2961:	spin_lock_bh(&sta->lock);
+tx.c:3037:			memcpy(hdr->addr1, sta->sta.addr, ETH_ALEN);
+tx.c:3058:	if (sta->sta.wme) {
+tx.c:3068:	build.key = rcu_access_pointer(sta->ptk[sta->ptk_idx]);
+tx.c:3157:	old = rcu_dereference_protected(sta->fast_tx,
+tx.c:3158:					lockdep_is_held(&sta->lock));
+tx.c:3159:	rcu_assign_pointer(sta->fast_tx, fast_tx);
+tx.c:3162:	spin_unlock_bh(&sta->lock);
+tx.c:3183:		if (sdata != sta->sdata &&
+tx.c:3184:		    (!sta->sdata->bss || sta->sdata->bss != sdata->bss))
+tx.c:3196:	spin_lock_bh(&sta->lock);
+tx.c:3197:	fast_tx = rcu_dereference_protected(sta->fast_tx,
+tx.c:3198:					    lockdep_is_held(&sta->lock));
+tx.c:3199:	RCU_INIT_POINTER(sta->fast_tx, NULL);
+tx.c:3200:	spin_unlock_bh(&sta->lock);
+tx.c:3299:	struct ieee80211_txq *txq = sta->sta.txq[tid];
+tx.c:3303:	u8 max_subframes = sta->sta.max_amsdu_subframes;
+tx.c:3305:	int max_amsdu_len = sta->sta.max_amsdu_len;
+tx.c:3331:	if (sta->sta.max_rc_amsdu_len)
+tx.c:3333:				      sta->sta.max_rc_amsdu_len);
+tx.c:3335:	if (sta->sta.max_tid_amsdu_len[tid])
+tx.c:3337:				      sta->sta.max_tid_amsdu_len[tid]);
+tx.c:3464:		sta->tx_stats.msdu[tid] +=
+tx.c:3467:		sta->tx_stats.msdu[tid]++;
+tx.c:3474:	sta->tx_stats.bytes[skb_get_queue_mapping(skb)] += skb->len;
+tx.c:3475:	sta->tx_stats.packets[skb_get_queue_mapping(skb)]++;
+tx.c:3532:		tid_tx = rcu_dereference(sta->ampdu_mlme.tid_tx[tid]);
+tx.c:3737:		r = ieee80211_xmit_fast_finish(sta->sdata, sta, pn_offs,
+tx.c:4198:		fast_tx = rcu_dereference(sta->fast_tx);
+tx.c:4269:	ether_addr_copy(eth->h_dest, sta->sta.addr);
+tx.c:4330:		if (sdata != sta->sdata)
+tx.c:4333:		if (unlikely(ether_addr_equal(eth->h_source, sta->sta.addr)))
+tx.c:4427:	if (sta && sta->uploaded)
+tx.c:4428:		pubsta = &sta->sta;
+tx.c:4461:	tid_tx = rcu_dereference(sta->ampdu_mlme.tid_tx[tid]);
+tx.c:4483:	sta->tx_stats.bytes[skb_get_queue_mapping(skb)] += skb->len;
+tx.c:4484:	sta->tx_stats.packets[skb_get_queue_mapping(skb)]++;
+tx.c:4524:	if (unlikely(IS_ERR_OR_NULL(sta) || !sta->uploaded ||
+tx.c:4529:	key = rcu_dereference(sta->ptk[sta->ptk_idx]);
+tx.c:4632:		if (IS_ERR(sta) || (sta && !sta->uploaded))
+tx.c:5378:		qos = sta && sta->sta.wme;
+tx.c:5560:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+tx.c:5581:	if (sta->reserved_tid == tid) {
+tx.c:5586:	if (sta->reserved_tid != IEEE80211_TID_UNRESERVED) {
+tx.c:5607:	sta->reserved_tid = tid;
+tx.c:5624:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+tx.c:5639:	if (tid != sta->reserved_tid) {
+tx.c:5644:	sta->reserved_tid = IEEE80211_TID_UNRESERVED;
+mlme.c:3256:	return sta->sta.he_cap.he_cap_elem.mac_cap_info[0] &
+mlme.c:3283:		(sta->sta.he_cap.he_cap_elem.mac_cap_info[2] &
+mlme.c:3489:		bss_conf->he_support = sta->sta.he_cap.has_he;
+mlme.c:3571:		sta->sta.rx_nss = nss;
+mlme.c:3578:		sta->sta.mfp = true;
+mlme.c:3580:		sta->sta.mfp = false;
+mlme.c:3583:	sta->sta.wme = (elems->wmm_param || elems->s1g_capab) &&
+mlme.c:3592:			   sta->sta.addr);
+mlme.c:3600:		drv_sta_set_4addr(local, sdata, &sta->sta, true);
+mlme.c:4711:	timeout = sta->status_stats.last_ack;
+mlme.c:4712:	if (time_before(sta->status_stats.last_ack, sta->rx_stats.last_rx))
+mlme.c:4713:		timeout = sta->rx_stats.last_rx;
+mlme.c:5288:			new_sta->sta.supp_rates[cbss->channel->band] = rates;
+ocb.c:77:	sta->sta.supp_rates[band] =
+ocb.c:81:	list_add(&sta->list, &ifocb->incomplete_stations);
+ocb.c:89:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+ocb.c:92:	memcpy(addr, sta->sta.addr, ETH_ALEN);
+ocb.c:135:		list_del(&sta->list);
+ocb.c:218:		list_del(&sta->list);
+mesh_plink.c:64:		(s8)-ewma_signal_read(&sta->rx_stats_avg.signal) >
+mesh_plink.c:73: * Locking: this function must be called holding sta->mesh->plink_lock
+mesh_plink.c:77:	lockdep_assert_held(&sta->mesh->plink_lock);
+mesh_plink.c:78:	sta->mesh->plink_state = NL80211_PLINK_LISTEN;
+mesh_plink.c:79:	sta->mesh->llid = sta->mesh->plid = sta->mesh->reason = 0;
+mesh_plink.c:80:	sta->mesh->plink_retries = 0;
+mesh_plink.c:123:		if (sdata != sta->sdata ||
+mesh_plink.c:124:		    sta->mesh->plink_state != NL80211_PLINK_ESTAB)
+mesh_plink.c:128:		if (erp_rates & sta->sta.supp_rates[sband->band])
+mesh_plink.c:174:		if (sdata != sta->sdata ||
+mesh_plink.c:175:		    sta->mesh->plink_state != NL80211_PLINK_ESTAB)
+mesh_plink.c:178:		if (sta->sta.bandwidth > IEEE80211_STA_RX_BW_20)
+mesh_plink.c:181:		if (!sta->sta.ht_cap.ht_supported) {
+mesh_plink.c:183:				       sta->sta.addr);
+mesh_plink.c:188:		mpl_dbg(sdata, "HT20 sta (%pM) is present\n", sta->sta.addr);
+mesh_plink.c:275:			put_unaligned_le16(sta->sta.aid, pos);
+mesh_plink.c:359: * Locking: the caller must hold sta->mesh->plink_lock
+mesh_plink.c:363:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+mesh_plink.c:366:	lockdep_assert_held(&sta->mesh->plink_lock);
+mesh_plink.c:368:	if (sta->mesh->plink_state == NL80211_PLINK_ESTAB)
+mesh_plink.c:370:	sta->mesh->plink_state = NL80211_PLINK_BLOCKED;
+mesh_plink.c:388:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+mesh_plink.c:391:	spin_lock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:395:		sta->mesh->reason = WLAN_REASON_MESH_PEER_CANCELED;
+mesh_plink.c:397:				    sta->sta.addr, sta->mesh->llid,
+mesh_plink.c:398:				    sta->mesh->plid, sta->mesh->reason);
+mesh_plink.c:400:	spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:402:		del_timer_sync(&sta->mesh->plink_timer);
+mesh_plink.c:418:	enum ieee80211_sta_rx_bandwidth bw = sta->sta.bandwidth;
+mesh_plink.c:427:	spin_lock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:428:	sta->rx_stats.last_rx = jiffies;
+mesh_plink.c:431:	if (sta->mesh->plink_state == NL80211_PLINK_ESTAB &&
+mesh_plink.c:432:	    sta->mesh->processed_beacon)
+mesh_plink.c:434:	sta->mesh->processed_beacon = true;
+mesh_plink.c:436:	if (sta->sta.supp_rates[sband->band] != rates)
+mesh_plink.c:438:	sta->sta.supp_rates[sband->band] = rates;
+mesh_plink.c:452:	if (bw != sta->sta.bandwidth)
+mesh_plink.c:459:		if (sta->sta.bandwidth != IEEE80211_STA_RX_BW_20)
+mesh_plink.c:461:		sta->sta.bandwidth = IEEE80211_STA_RX_BW_20;
+mesh_plink.c:469:	spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:488:		__set_bit(sta->sta.aid, aid_map);
+mesh_plink.c:517:	sta->mesh->plink_state = NL80211_PLINK_LISTEN;
+mesh_plink.c:518:	sta->sta.wme = true;
+mesh_plink.c:519:	sta->sta.aid = aid;
+mesh_plink.c:618:	sta->mesh->connected_to_gate = elems->mesh_config->meshconf_form &
+mesh_plink.c:622:	    sta->mesh->plink_state == NL80211_PLINK_LISTEN &&
+mesh_plink.c:650:	if (sta->sdata->local->quiescing)
+mesh_plink.c:653:	spin_lock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:660:	if (time_before(jiffies, sta->mesh->plink_timer.expires)) {
+mesh_plink.c:661:		mpl_dbg(sta->sdata,
+mesh_plink.c:663:			sta->sta.addr, mplstates[sta->mesh->plink_state]);
+mesh_plink.c:664:		spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:669:	if (sta->mesh->plink_state == NL80211_PLINK_LISTEN ||
+mesh_plink.c:670:	    sta->mesh->plink_state == NL80211_PLINK_ESTAB) {
+mesh_plink.c:671:		mpl_dbg(sta->sdata,
+mesh_plink.c:673:			sta->sta.addr, mplstates[sta->mesh->plink_state]);
+mesh_plink.c:674:		spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:678:	mpl_dbg(sta->sdata,
+mesh_plink.c:680:		sta->sta.addr, mplstates[sta->mesh->plink_state]);
+mesh_plink.c:681:	sdata = sta->sdata;
+mesh_plink.c:684:	switch (sta->mesh->plink_state) {
+mesh_plink.c:688:		if (sta->mesh->plink_retries < mshcfg->dot11MeshMaxRetries) {
+mesh_plink.c:690:			mpl_dbg(sta->sdata,
+mesh_plink.c:692:				sta->sta.addr, sta->mesh->plink_retries,
+mesh_plink.c:693:				sta->mesh->plink_timeout);
+mesh_plink.c:695:			sta->mesh->plink_timeout = sta->mesh->plink_timeout +
+mesh_plink.c:696:					     rand % sta->mesh->plink_timeout;
+mesh_plink.c:697:			++sta->mesh->plink_retries;
+mesh_plink.c:698:			mod_plink_timer(sta, sta->mesh->plink_timeout);
+mesh_plink.c:708:		sta->mesh->plink_state = NL80211_PLINK_HOLDING;
+mesh_plink.c:714:		del_timer(&sta->mesh->plink_timer);
+mesh_plink.c:720:	spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:722:		mesh_plink_frame_tx(sdata, sta, action, sta->sta.addr,
+mesh_plink.c:723:				    sta->mesh->llid, sta->mesh->plid, reason);
+mesh_plink.c:728:	sta->mesh->plink_timeout = timeout;
+mesh_plink.c:729:	mod_timer(&sta->mesh->plink_timer, jiffies + msecs_to_jiffies(timeout));
+mesh_plink.c:741:		if (sdata != sta->sdata)
+mesh_plink.c:744:		if (!memcmp(&sta->mesh->llid, &llid, sizeof(llid))) {
+mesh_plink.c:767:	struct ieee80211_sub_if_data *sdata = sta->sdata;
+mesh_plink.c:773:	spin_lock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:774:	sta->mesh->llid = mesh_get_new_llid(sdata);
+mesh_plink.c:775:	if (sta->mesh->plink_state != NL80211_PLINK_LISTEN &&
+mesh_plink.c:776:	    sta->mesh->plink_state != NL80211_PLINK_BLOCKED) {
+mesh_plink.c:777:		spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:780:	sta->mesh->plink_state = NL80211_PLINK_OPN_SNT;
+mesh_plink.c:782:	spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:785:		sta->sta.addr);
+mesh_plink.c:791:			    sta->sta.addr, sta->mesh->llid, 0, 0);
+mesh_plink.c:799:	spin_lock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:801:	sta->mesh->plink_state = NL80211_PLINK_BLOCKED;
+mesh_plink.c:802:	spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:816:	sta->mesh->reason = reason;
+mesh_plink.c:817:	sta->mesh->plink_state = NL80211_PLINK_HOLDING;
+mesh_plink.c:827:	del_timer(&sta->mesh->plink_timer);
+mesh_plink.c:828:	sta->mesh->plink_state = NL80211_PLINK_ESTAB;
+mesh_plink.c:832:	mpl_dbg(sdata, "Mesh plink with %pM ESTABLISHED\n", sta->sta.addr);
+mesh_plink.c:855:	mpl_dbg(sdata, "peer %pM in state %s got event %s\n", sta->sta.addr,
+mesh_plink.c:856:		mplstates[sta->mesh->plink_state], mplevents[event]);
+mesh_plink.c:858:	spin_lock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:859:	switch (sta->mesh->plink_state) {
+mesh_plink.c:866:			sta->mesh->plink_state = NL80211_PLINK_OPN_RCVD;
+mesh_plink.c:867:			sta->mesh->llid = mesh_get_new_llid(sdata);
+mesh_plink.c:889:			sta->mesh->plink_state = NL80211_PLINK_OPN_RCVD;
+mesh_plink.c:893:			sta->mesh->plink_state = NL80211_PLINK_CNF_RCVD;
+mesh_plink.c:954:			del_timer(&sta->mesh->plink_timer);
+mesh_plink.c:973:	spin_unlock_bh(&sta->mesh->plink_lock);
+mesh_plink.c:977:		mesh_plink_frame_tx(sdata, sta, action, sta->sta.addr,
+mesh_plink.c:978:				    sta->mesh->llid, sta->mesh->plid,
+mesh_plink.c:979:				    sta->mesh->reason);
+mesh_plink.c:985:					    sta->sta.addr, sta->mesh->llid,
+mesh_plink.c:986:					    sta->mesh->plid, 0);
+mesh_plink.c:1045:		if (sta->mesh->plink_state == NL80211_PLINK_BLOCKED)
+mesh_plink.c:1054:		    (sta->mesh->plid && sta->mesh->plid != plid))
+mesh_plink.c:1063:		    sta->mesh->llid != llid ||
+mesh_plink.c:1064:		    (sta->mesh->plid && sta->mesh->plid != plid))
+mesh_plink.c:1070:		if (sta->mesh->plink_state == NL80211_PLINK_ESTAB)
+mesh_plink.c:1081:		else if (sta->mesh->plid != plid)
+mesh_plink.c:1083:		else if (ie_len == 8 && sta->mesh->llid != llid)
+mesh_plink.c:1171:		sta->mesh->plid = plid;
+mesh_plink.c:1184:		if (!sta->mesh->plid)
+mesh_plink.c:1185:			sta->mesh->plid = plid;
+mesh_plink.c:1187:		sta->mesh->aid = get_unaligned_le16(PLINK_CNF_AID(mgmt));
+mesh.c:162:	struct ieee80211_sub_if_data *sdata = sta->sdata;

@@ -239,6 +239,8 @@ config VIDEO_DECODER
 	select VIDEO_VPX3220 if MEDIA_SUBDRV_AUTOSELECT
 	select VIDEO_MAX9286 if MEDIA_SUBDRV_AUTOSELECT
 	select VIDEO_SAA717X if MEDIA_SUBDRV_AUTOSELECT
+	select VIDEO_DS90UB960 if MEDIA_SUBDRV_AUTOSELECT
+	select VIDEO_TP2855 if MEDIA_SUBDRV_AUTOSELECT
 	help
 	  Say Y here to select the video decoders which are
 	  hidden by MEDIA_HIDE_ANCILLARY_SUBDRV. This config
@@ -514,6 +516,32 @@ config VIDEO_MAX9286
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called max9286.
+
+config VIDEO_DS90UB960
+	tristate "TI DS90UB960 FDP-LinkIII deserializer support"
+	depends on I2C && I2C_MUX
+	depends on OF_GPIO
+	select V4L2_FWNODE
+	select VIDEO_V4L2_SUBDEV_API
+	select MEDIA_CONTROLLER
+	help
+	  This driver supports the TI DS90UB960 FDP-LinkIII deserializer.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called du90ub960.
+
+config VIDEO_TP2855
+	tristate "Techpoint TP2855 Analog Video Decoder support"
+	depends on I2C && I2C_MUX
+	depends on OF_GPIO
+	select V4L2_FWNODE
+	select VIDEO_V4L2_SUBDEV_API
+	select MEDIA_CONTROLLER
+	help
+	  This driver supports the Techpoint TP2855 Analog Video Decoder.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called tp2855.
 
 comment "Video and audio decoders"
 
@@ -1384,6 +1412,32 @@ config VIDEO_RDACM21
 
 	  This camera should be used in conjunction with a GMSL
 	  deserialiser such as the MAX9286.
+	  
+config VIDEO_FM828
+	tristate "REC FM828 camera support"
+	depends on I2C
+	select V4L2_FWNODE
+	select VIDEO_V4L2_SUBDEV_API
+	select MEDIA_CONTROLLER
+	help
+	  This driver supports the REC FM828 GMSL camera, used in
+	  ADAS systems.
+
+	  This camera should be used in conjunction with a FDP-LinkIII
+	  deserialiser such as the DS90UB960.
+	  
+config VIDEO_SCA179M
+	tristate "OSA SCA179M camera support"
+	depends on I2C
+	select V4L2_FWNODE
+	select VIDEO_V4L2_SUBDEV_API
+	select MEDIA_CONTROLLER
+	help
+	  This driver supports the OSA SCA179M AHD camera, used in
+	  ADAS systems.
+
+	  This camera should be used in conjunction with a analog
+	  video decoder such as the TP2855.
 
 config VIDEO_RJ54N1
 	tristate "Sharp RJ54N1CB0C sensor support"
