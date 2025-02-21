@@ -108,6 +108,9 @@ struct dw9768 {
 	u32 aac_timing;
 	u32 clock_presc;
 	u32 move_delay_us;
+
+	bool standalone;
+	struct v4l2_device v4l2_dev;
 };
 
 static inline struct dw9768 *sd_to_dw9768(struct v4l2_subdev *subdev)
@@ -268,16 +271,18 @@ static int dw9768_init(struct dw9768 *dw9768)
 			return ret;
 	}
 
-	for (val = dw9768->focus->val % DW9768_MOVE_STEPS;
-	     val <= dw9768->focus->val;
-	     val += DW9768_MOVE_STEPS) {
-		ret = dw9768_set_dac(dw9768, val);
-		if (ret) {
-			dev_err(&client->dev, "I2C failure: %d", ret);
-			return ret;
+	if(!dw9768->standalone) {
+		for (val = dw9768->focus->val % DW9768_MOVE_STEPS;
+		     val <= dw9768->focus->val;
+		     val += DW9768_MOVE_STEPS) {
+			ret = dw9768_set_dac(dw9768, val);
+			if (ret) {
+				dev_err(&client->dev, "I2C failure: %d", ret);
+				return ret;
+			}
+			usleep_range(dw9768->move_delay_us,
+				     dw9768->move_delay_us + 1000);
 		}
-		usleep_range(dw9768->move_delay_us,
-			     dw9768->move_delay_us + 1000);
 	}
 
 	return 0;
@@ -287,6 +292,9 @@ static int dw9768_release(struct dw9768 *dw9768)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&dw9768->sd);
 	int ret, val;
+
+	if(dw9768->standalone)
+		return 0;
 
 	val = round_down(dw9768->focus->val, DW9768_MOVE_STEPS);
 	for ( ; val >= 0; val -= DW9768_MOVE_STEPS) {
@@ -478,13 +486,54 @@ static int dw9768_probe(struct i2c_client *client)
 		}
 	}
 
-	ret = v4l2_async_register_subdev(&dw9768->sd);
-	if (ret < 0) {
-		dev_err(dev, "failed to register V4L2 subdev: %d", ret);
-		goto err_power_off;
+	dw9768->standalone = of_property_read_bool(dev->of_node, "standalone");
+	dev_warn(dev, "%s: is standalone? %s\n", __func__, dw9768->standalone? "Yes" : "No");
+
+	if(dw9768->standalone) {
+		struct device_node *node = of_parse_phandle(dev->of_node, "after", 0);
+		if(node) {
+			struct i2c_client *prev_dev = of_find_i2c_device_by_node(node);
+			if(!prev_dev || !i2c_client_has_driver(prev_dev) || !device_is_bound(&prev_dev->dev)) {
+				dev_warn(dev, "%s: i2c driver for %s is not ready, wait!\n", __func__, node->name);
+				of_node_put(node);
+				ret = -EPROBE_DEFER;
+				goto err_power_off;
+			}
+			if(prev_dev)
+				put_device(&prev_dev->dev);
+			of_node_put(node);
+		}
+
+		dev_warn(dev, "%s: registering the standalone subdev...\n", __func__);
+		ret = v4l2_device_register(dev, &dw9768->v4l2_dev);
+		if(ret < 0) {
+			dev_err(dev, "%s: cannot register the standalone v4l2_device\n", __func__);
+			goto err_power_off;
+		}
+		ret = v4l2_device_register_subdev(&dw9768->v4l2_dev, &dw9768->sd);
+		if(ret < 0) {
+			dev_err(dev, "%s: cannot register the standalone subdev\n", __func__);
+			goto err_unregister_v4l2_dev;
+		}
+		ret = v4l2_device_register_subdev_nodes(&dw9768->v4l2_dev);
+		if(ret < 0) {
+			dev_err(dev, "%s: cannot register the standalone subdev nodes\n", __func__);
+			goto err_unregister_v4l2_dev;
+		}
+		dev_warn(dev, "%s: registered the standalone subdev...\n", __func__);
+	} else {
+		ret = v4l2_async_register_subdev(&dw9768->sd);
+		if (ret < 0) {
+			dev_err(dev, "failed to register V4L2 subdev: %d", ret);
+			goto err_power_off;
+		}
 	}
 
 	return 0;
+
+err_unregister_v4l2_dev:
+	if(dw9768->standalone)
+		v4l2_device_unregister(&dw9768->v4l2_dev);
 
 err_power_off:
 	if (pm_runtime_enabled(dev))
@@ -495,6 +544,9 @@ err_clean_entity:
 	media_entity_cleanup(&dw9768->sd.entity);
 err_free_handler:
 	v4l2_ctrl_handler_free(&dw9768->ctrls);
+
+	if(dw9768)
+		devm_kfree(dev, dw9768);
 
 	return ret;
 }
@@ -511,6 +563,9 @@ static int dw9768_remove(struct i2c_client *client)
 	if (!pm_runtime_status_suspended(&client->dev))
 		dw9768_runtime_suspend(&client->dev);
 	pm_runtime_set_suspended(&client->dev);
+
+	if(dw9768->standalone)
+		v4l2_device_unregister(&dw9768->v4l2_dev);
 
 	return 0;
 }

@@ -141,6 +141,12 @@ static void stmmac_exit_fs(struct net_device *dev);
 
 #define STMMAC_COAL_TIMER(x) (ns_to_ktime((x) * NSEC_PER_USEC))
 
+#define STMMAC_MAC_RPMB	1
+
+#if IS_ENABLED(CONFIG_RPMB) || defined(STMMAC_MAC_RPMB)
+extern int rpmb_mac_reader(unsigned char *mac);
+#endif
+
 int stmmac_bus_clks_config(struct stmmac_priv *priv, bool enabled)
 {
 	int ret = 0;
@@ -3268,6 +3274,9 @@ static int stmmac_hw_setup(struct net_device *dev, bool ptp_register)
 	bool sph_en;
 	u32 chan;
 	int ret;
+#if IS_ENABLED(CONFIG_RPMB) || defined(STMMAC_MAC_RPMB)
+	unsigned char rpmb_mac[6];
+#endif
 
 	/* DMA initialization and SW reset */
 	ret = stmmac_init_dma_engine(priv);
@@ -3276,6 +3285,24 @@ static int stmmac_hw_setup(struct net_device *dev, bool ptp_register)
 			   __func__);
 		return ret;
 	}
+
+#if IS_ENABLED(CONFIG_RPMB) || defined(STMMAC_MAC_RPMB)
+	netdev_info(priv->dev, "device MAC address is:%pM, trying to get MAC address\n",
+		 priv->dev->dev_addr);
+
+	if (!rpmb_mac_reader(rpmb_mac)) {
+		if (is_valid_ether_addr(rpmb_mac)) {
+			memcpy(priv->dev->dev_addr, rpmb_mac, ETH_ALEN);
+			netdev_info(priv->dev, "set device MAC to MAC address:%pM\n",
+				 priv->dev->dev_addr);
+		}
+	} else {
+		netdev_info(priv->dev, "get MAC address failed!\n");
+	}
+#else
+	netdev_info(priv->dev, "device MAC address is:%pM\n",
+		 priv->dev->dev_addr);
+#endif
 
 	/* Copy the MAC addr into the HW  */
 	stmmac_set_umac_addr(priv, priv->hw, dev->dev_addr, 0);

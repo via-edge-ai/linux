@@ -8,12 +8,14 @@
 
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/gpio.h>
 #include <linux/iopoll.h>
 #include <linux/irq.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/irqdomain.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/of_gpio.h>
 #include <linux/msi.h>
 #include <linux/pci.h>
 #include <linux/phy/phy.h>
@@ -374,7 +376,19 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 static int mtk_pcie_set_affinity(struct irq_data *data,
 				 const struct cpumask *mask, bool force)
 {
-	return -EINVAL;
+	struct mtk_pcie_port *port = data->domain->host_data;
+	struct irq_data *port_data = irq_get_irq_data(port->irq);
+	struct irq_chip *port_chip = irq_data_get_irq_chip(port_data);
+	int ret;
+
+	if (!port_chip || !port_chip->irq_set_affinity)
+		return -EINVAL;
+
+	ret = port_chip->irq_set_affinity(port_data, mask, force);
+
+	irq_data_update_effective_affinity(data, mask);
+
+	return ret;
 }
 
 static void mtk_pcie_msi_irq_mask(struct irq_data *data)
@@ -833,11 +847,37 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 
 static int mtk_pcie_setup(struct mtk_pcie_port *port)
 {
+	struct device *dev = port->dev;
+	struct device_node *node = dev->of_node;
+	int pcie_m2_pwron_gpio;
 	int err;
 
 	err = mtk_pcie_parse_port(port);
 	if (err)
 		return err;
+
+	pcie_m2_pwron_gpio = of_get_named_gpio(node,
+					"mediatek,pcie-m2-pwron-gpio", 0);
+
+	if (gpio_is_valid(pcie_m2_pwron_gpio)
+		/*&& (!devm_gpio_request(dev, pcie_m2_pwron_gpio,
+			"mediatek,pcie-m2-pwron-gpio"))*/) {
+		dev_info(dev, "pcie_m2_pwron_gpio is %d\n", pcie_m2_pwron_gpio);
+
+		/* power on m2 module signal if exists */
+		msleep(50);
+		gpio_direction_output(pcie_m2_pwron_gpio, 1);
+		dev_info(dev, "pcie_m2_pwron gpio(%d) = %d\n",
+			pcie_m2_pwron_gpio, gpio_get_value(pcie_m2_pwron_gpio));
+	}
+
+	/*
+	 * The controller may have been left out of reset by the bootloader
+	 * so make sure that we get a clean start by asserting resets here.
+	 */
+	reset_control_assert(port->phy_reset);
+	reset_control_assert(port->mac_reset);
+	usleep_range(10, 20);
 
 	/* Don't touch the hardware registers before power up */
 	err = mtk_pcie_power_up(port);
@@ -964,6 +1004,7 @@ static int __maybe_unused mtk_pcie_turn_off_link(struct mtk_pcie_port *port)
 static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 {
 	struct mtk_pcie_port *port = dev_get_drvdata(dev);
+	u32 val;
 	int err;
 
 	/* Trigger link to L2 state */
@@ -973,13 +1014,19 @@ static int __maybe_unused mtk_pcie_suspend_noirq(struct device *dev)
 		return err;
 	}
 
+	/* Pull down the PERST# pin */
+	val = readl_relaxed(port->base + PCIE_RST_CTRL_REG);
+	val |= PCIE_PE_RSTB;
+	writel_relaxed(val, port->base + PCIE_RST_CTRL_REG);
+
 	dev_dbg(port->dev, "entered L2 states successfully");
 
 	mtk_pcie_irq_save(port);
-	mtk_pcie_power_down(port);
 
 	/* Pull down the PERST# pin */
 	pinctrl_pm_select_idle_state(port->dev);
+
+	mtk_pcie_power_down(port);
 
 	return 0;
 }
@@ -989,10 +1036,11 @@ static int __maybe_unused mtk_pcie_resume_noirq(struct device *dev)
 	struct mtk_pcie_port *port = dev_get_drvdata(dev);
 	int err;
 
-	pinctrl_pm_select_default_state(port->dev);
 	err = mtk_pcie_power_up(port);
 	if (err)
 		return err;
+
+	pinctrl_pm_select_default_state(port->dev);
 
 	err = mtk_pcie_startup_port(port);
 	if (err) {
