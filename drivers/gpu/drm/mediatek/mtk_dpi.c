@@ -853,6 +853,10 @@ mtk_dpi_bridge_mode_valid(struct drm_bridge *bridge,
 	if (dpi->conf->max_clock_khz && mode->clock > dpi->conf->max_clock_khz)
 		return MODE_CLOCK_HIGH;
 
+	/* YCbCr mode does not support */
+	if (drm_mode_is_420(info, mode))
+		return MODE_NO_420;
+
 	return MODE_OK;
 }
 

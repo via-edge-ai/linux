@@ -5,7 +5,12 @@ obj-$(CONFIG_PINCTRL_MTK)	+= pinctrl-mtk-common.o
 obj-$(CONFIG_PINCTRL_MTK_V2)	+= pinctrl-mtk-common-v2.o
 obj-$(CONFIG_PINCTRL_MTK_MOORE) += pinctrl-moore.o
 obj-$(CONFIG_PINCTRL_MTK_PARIS) += pinctrl-paris.o
-
+ifeq ($(CONFIG_PINCTRL_MTK_PARIS),y)
+obj-y += pinctrl-paris.o pinctrl-mtk-common-v2_debug.o
+else ifeq ($(CONFIG_PINCTRL_MTK_PARIS),m)
+pinctrl-mtk-v2-y += pinctrl-paris.o
+obj-m += pinctrl-mtk-common-v2_debug.o
+endif
 # SoC Drivers
 obj-$(CONFIG_PINCTRL_MT2701)	+= pinctrl-mt2701.o
 obj-$(CONFIG_PINCTRL_MT2712)	+= pinctrl-mt2712.o

@@ -14,6 +14,8 @@
 #include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/mii.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 #include <linux/of_mdio.h>
 #include <linux/pm_runtime.h>
 #include <linux/phy.h>
@@ -445,6 +447,8 @@ int stmmac_mdio_register(struct net_device *ndev)
 	struct stmmac_mdio_bus_data *mdio_bus_data = priv->plat->mdio_bus_data;
 	struct device_node *mdio_node = priv->plat->mdio_node;
 	struct device *dev = ndev->dev.parent;
+	//struct device_node *np = priv->device->of_node;
+	//int vio33phy_gpio = -1, vio18phy_gpio = -1;
 	int addr, found, max_addr;
 
 	if (!mdio_bus_data)
@@ -456,6 +460,29 @@ int stmmac_mdio_register(struct net_device *ndev)
 
 	if (mdio_bus_data->irqs)
 		memcpy(new_bus->irq, mdio_bus_data->irqs, sizeof(new_bus->irq));
+
+#if 0
+//#ifdef CONFIG_OF
+	if (priv->device->of_node) {
+		vio33phy_gpio = of_get_named_gpio(np,
+						  "snps,vio33phy-gpio", 0);
+		vio18phy_gpio = of_get_named_gpio(np,
+						  "snps,vio18phy-gpio", 0);
+		if (gpio_is_valid(vio33phy_gpio) && gpio_is_valid(vio18phy_gpio)) {
+			if (!devm_gpio_request(priv->device, vio33phy_gpio,
+					       "vio33phy-gpio") &&
+			    !devm_gpio_request(priv->device, vio18phy_gpio,
+					       "vio18phy-gpio")) {
+				gpio_direction_output(vio33phy_gpio, 0);
+				gpio_direction_output(vio18phy_gpio, 0);
+				usleep_range(10, 50);
+				gpio_direction_output(vio33phy_gpio, 1);
+				usleep_range(500, 1000);
+				gpio_direction_output(vio18phy_gpio, 1);
+			}
+		}
+	}
+#endif
 
 	new_bus->name = "stmmac";
 
