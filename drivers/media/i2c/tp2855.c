@@ -153,6 +153,32 @@ static int tp2855_read(struct tp2855_device *tp2855, u8 addr, u8 *data)
 	return 0;
 }
 
+static void tp2855_reg_dump(struct tp2855_device *tp2855)
+{
+	u8 addr = 0, data = 0;
+	int vin = 0;
+
+	dev_info(tp2855->dev, "--------------- TP2855 Registers --------------");
+	for (vin = 0; vin <= 4; vin++) {
+		dev_info(tp2855->dev, "------------vin%d: common regists-------------", vin);
+		tp2855_write(tp2855, 0x40, vin);
+		for (addr = 0; addr < 0xff; addr++) {
+			data = 0;
+			tp2855_read(tp2855, addr, &data);
+			dev_info(tp2855->dev, "vid%d: reg[0x%02x] = 0x%02x\n",
+				vin, addr, data);
+		}
+		dev_info(tp2855->dev, "------------vin%d: common regists end-------------", vin);
+	}
+	dev_info(tp2855->dev, "MIPI-CSI-specific registers:");
+	tp2855_write(tp2855, 0x40, 0x08);
+	for (addr = 0; addr <= 0x36; addr++) {
+		data = 0;
+		dev_info(tp2855->dev,"MIPI: reg[0x%02x] = 0x%02x\n", addr, data);
+	}
+	dev_info(tp2855->dev, "MIPI-CSI-specific registers dump end");
+}
+
 static inline int tp2855_request_gpio(
 	struct tp2855_device *tp2855, int gpio_num, char* lable)
 {
@@ -181,6 +207,7 @@ static int tp2855_notify_bound(struct v4l2_async_notifier *notifier,
 	struct tp2855_device *tp2855 = to_tp2855(notifier->sd);
 	struct tp2855_source *source = to_tp2855_asd(asd)->source;
 	unsigned int index = to_index(tp2855, source);
+	struct v4l2_subdev_format sub_fmt = {0};
 	unsigned int src_pad;
 	int ret;
 
@@ -208,7 +235,7 @@ static int tp2855_notify_bound(struct v4l2_async_notifier *notifier,
 		return ret;
 	}
 
-	dev_dbg(&tp2855->client->dev, "Bound %s pad: %u on index %u\n",
+	dev_info(&tp2855->client->dev, "Bound %s pad: %u on index %u\n",
 		subdev->name, src_pad, index);
 
 	return 0;
@@ -293,12 +320,14 @@ static void tp2855_power_off(struct tp2855_device *tp2855)
 {
 	u8 val = 0;
 
+	dev_info(tp2855->dev, "disable MIPI CSI2 output get 0x23= 0x%02x\n", val);
+
 	/* Disable MIPI CSI2 output */
 	tp2855_write(tp2855, 0x40, 0x8);
 	tp2855_read(tp2855, 0x23, &val);
-	dev_dbg(tp2855->dev, "disable MIPI CSI2 output get 0x23= 0x%02x\n", val);
+	dev_info(tp2855->dev, "disable MIPI CSI2 output get 0x23= 0x%02x\n", val);
 	val |= (0x1 << 1); // disable D-PHY clock.
-	dev_dbg(tp2855->dev, "disable MIPI CSI2 output change 0x23= 0x%02x\n", val);
+	dev_info(tp2855->dev, "disable MIPI CSI2 output change 0x23= 0x%02x\n", val);
 	tp2855_write(tp2855, 0x23, val);
 
 	tp2855_read(tp2855, 0x02, &val);
@@ -322,7 +351,7 @@ static int tp2855_configure(struct tp2855_device *tp2855)
 	if (ret < 0)
 		return ret;
 
-	dev_dbg(tp2855->dev, "get mipi data lanes: %d\n", data_lanes);
+	dev_info(tp2855->dev, "get mipi data lanes: %d\n", data_lanes);
 
 	return 0;
 }
@@ -330,38 +359,33 @@ static int tp2855_configure(struct tp2855_device *tp2855)
 // AHD1080P30 camera decoder init
 static int tp2854_ahd_1080p_hw_init(struct tp2855_device *tp2855, u8 ch)
 {
-    u8 val;
-    int ret = 0;
+	u8 val;
+	int ret = 0;
 	const unsigned char SYS_MODE[5]={0x01,0x02,0x04,0x08,0x0f}; 
 
+	dev_info(tp2855->dev, "Start config 1080p on %d ch\n", ch);
 
 	//TP2854_decoder_init
-    tp2855_write(tp2855, 0x40, 0x04);
-
+	tp2855_write(tp2855, 0x40, 0x04);
 	tp2855_write(tp2855, 0x06, 0x80);
-
 	tp2855_read(tp2855, 0xf4, &val);
-	dev_err(tp2855->dev, "Get 0xf4:%x\n", val);
+	dev_dbg(tp2855->dev, "Get 0xf4:%x\n", val);
 	val |= 0x0f; 			//disable all vin 
-    val &= ~(tp2855->source_mask);  // enable vin that we want
-
-	dev_err(tp2855->dev, "Set 0xf4:%x\n", val);
-	if (ch == 4)
-		val = 0x00;
-    tp2855_write(tp2855, 0xf4, val);
-
+	val &= ~(tp2855->source_mask);  // enable vin that we want
+	dev_info(tp2855->dev, "Set 0xf4:%x\n", val);
+	tp2855_write(tp2855, 0xf4, val);
 
 	dev_dbg(tp2855->dev, "config rx%d\n", ch);
-	tp2855_write(tp2855, 0x40, 0x04);
+	tp2855_write(tp2855, 0x40, ch);
 
 	tp2855_write(tp2855, 0x45, 0x01); 
 	tp2855_write(tp2855, 0x06, 0x12); 
 	tp2855_write(tp2855, 0x27, 0x2d);
 
 	tp2855_read(tp2855, 0xf5, &val);
-	dev_err(tp2855->dev, "Get 0xf5= 0x%02x\n", val);
-	val &= ~SYS_MODE[4];
-	dev_err(tp2855->dev, "Set 0xf5= 0x%02x\n", val);
+	dev_info(tp2855->dev, "Get 0xf5= 0x%02x\n", val);
+	val &= ~SYS_MODE[ch];
+	dev_dbg(tp2855->dev, "Set 0xf5= 0x%02x\n", val);
 	tp2855_write(tp2855, 0xf5, val);
 
 	tp2855_write(tp2855, 0x02, 0x44);
@@ -384,6 +408,7 @@ static int tp2854_ahd_1080p_hw_init(struct tp2855_device *tp2855, u8 ch)
 	tp2855_write(tp2855, 0x25, 0xfe);
 	tp2855_write(tp2855, 0x26, 0x0d);
 
+	//tp2855_write(tp2855, 0x2a, 0x3c);    //blue screen
 	tp2855_write(tp2855, 0x2b, 0x60);  
 	tp2855_write(tp2855, 0x2c, 0x3a); 
 	tp2855_write(tp2855, 0x2d, 0x54);
@@ -398,6 +423,78 @@ static int tp2854_ahd_1080p_hw_init(struct tp2855_device *tp2855, u8 ch)
 
     return ret;
 }
+
+// AHD720P30 camera decoder init
+static int tp2854_ahd_720p_hw_init(struct tp2855_device *tp2855, u8 ch)
+{
+	u8 val;
+	int ret = 0;
+	const unsigned char SYS_MODE[5]={0x01,0x02,0x04,0x08,0x0f};
+
+	dev_info(tp2855->dev, "Start config 720p on %d ch\n", ch);
+
+	//TP2854_decoder_init
+	tp2855_write(tp2855, 0x40, 0x04);
+	tp2855_write(tp2855, 0x06, 0x80);
+	tp2855_read(tp2855, 0xf4, &val);
+	dev_info(tp2855->dev, "Get 0xf4:%x\n", val);
+	val |= 0x0f; 			//disable all vin
+	val &= ~(tp2855->source_mask);  // enable vin that we want
+	dev_info(tp2855->dev, "Set 0xf4:%x\n", val);
+	tp2855_write(tp2855, 0xf4, val);
+
+	dev_dbg(tp2855->dev, "config rx%d\n", ch);
+	tp2855_write(tp2855, 0x40, ch);
+	tp2855_write(tp2855, 0x45, 0x01);
+	tp2855_write(tp2855, 0x06, 0x12);
+	tp2855_write(tp2855, 0x27, 0x2d);
+
+	tp2855_read(tp2855, 0xf5, &val);
+	dev_info(tp2855->dev, "Get 0xf5= 0x%02x\n", val);
+	val |= SYS_MODE[ch];
+	dev_info(tp2855->dev, "Set 0xf5= 0x%02x\n", val);
+	tp2855_write(tp2855, 0xf5, val);
+
+	tp2855_write(tp2855, 0x02, 0x46);
+	tp2855_write(tp2855, 0x07, 0xc0);
+	tp2855_write(tp2855, 0x0b, 0xc0);
+	tp2855_write(tp2855, 0x0c, 0x13);
+	tp2855_write(tp2855, 0x0d, 0x70);
+
+	tp2855_write(tp2855, 0x15, 0x13);
+	tp2855_write(tp2855, 0x16, 0x15);
+	tp2855_write(tp2855, 0x17, 0x00);
+	tp2855_write(tp2855, 0x18, 0x19);
+	tp2855_write(tp2855, 0x19, 0xd0);
+	tp2855_write(tp2855, 0x1a, 0x25);
+	tp2855_write(tp2855, 0x1c, 0x06);  //1280*720, 30fps
+	tp2855_write(tp2855, 0x1d, 0x72);  //1280*720, 30fps
+
+	tp2855_write(tp2855, 0x20, 0x40);
+	tp2855_write(tp2855, 0x21, 0x46);
+	tp2855_write(tp2855, 0x22, 0x36);
+	tp2855_write(tp2855, 0x23, 0x3c);
+	tp2855_write(tp2855, 0x25, 0xfe);
+	tp2855_write(tp2855, 0x26, 0x01);
+
+	//tp2855_write(tp2855, 0x2a, 0x3c);    //blue screen
+	tp2855_write(tp2855, 0x2b, 0x60);
+	tp2855_write(tp2855, 0x2c, 0x3a);
+	tp2855_write(tp2855, 0x2d, 0x5a);
+
+	tp2855_write(tp2855, 0x2e, 0x40);
+	tp2855_write(tp2855, 0x30, 0x9d);
+	tp2855_write(tp2855, 0x31, 0xca);
+	tp2855_write(tp2855, 0x32, 0x01);
+	tp2855_write(tp2855, 0x33, 0xd0);
+	tp2855_write(tp2855, 0x35, 0x25);
+
+	tp2855_write(tp2855, 0x38, 0x00);
+	tp2855_write(tp2855, 0x39, 0x18);
+
+	return ret;
+}
+
 
 static int tp2854_tx_init_4ch4lane_594m(struct tp2855_device *tp2855)
 {
@@ -473,7 +570,8 @@ static int tp2855_detect_chip(struct tp2855_device *tp2855)
 static int tp2855_hw_init(struct tp2855_device *tp2855)
 {
 	unsigned int retries;
-	int ret = 0;
+	int ret = 0, i = 0;
+	static int tp_config = 1;
 
 	for (retries = 0; retries < MAX_FW_LOAD_RETRIES; ++retries) {
 		ret = tp2855_power_on(tp2855);
@@ -487,21 +585,12 @@ static int tp2855_hw_init(struct tp2855_device *tp2855)
 			dev_err(tp2855->dev, "TP2854 detect id fail. ret = %d\n", ret);
 		}
 
-		ret = tp2854_ahd_1080p_hw_init(tp2855, 4);
-		if (ret) {
-			dev_err(tp2855->dev,
-			"tp2854_ahd_1080p_hw_init fail\n");
-			continue;
-		}
-
 		ret = tp2854_tx_init_4ch4lane_594m(tp2855);
 		if (ret < 0) {
 			dev_err(tp2855->dev, "tp2854_tx_init_4ch4lane_594m fail\n");
-            continue;
-        }
-		
+	        continue;
+		}
 		break;
-
 	}
 
 	if (retries == MAX_FW_LOAD_RETRIES) {
@@ -522,6 +611,7 @@ tp2855_get_pad_format(struct tp2855_device *tp2855,
 		      		  struct v4l2_subdev_state *sd_state,
 		      		  unsigned int pad, u32 which)
 {
+
 	switch (which) {
 	case V4L2_SUBDEV_FORMAT_TRY:
 		return v4l2_subdev_get_try_format(&tp2855->sd, sd_state, pad);
@@ -562,6 +652,10 @@ static int tp2855_get_fmt(struct v4l2_subdev *sd,
 	fmt->format = *format;
 	mutex_unlock(&tp2855->lock);
 
+	dev_dbg(tp2855->dev,
+	"[%s:%d] fmt->pad: %d, format->width: %d, format->height: %d, format->code: %x\n",
+			__func__, __LINE__, fmt->pad, format->width, format->height, format->code);
+
 	return 0;
 }
 
@@ -571,6 +665,7 @@ static int tp2855_set_fmt(struct v4l2_subdev *sd,
 {
 	struct tp2855_device *tp2855 = to_tp2855(sd);
 	struct v4l2_mbus_framefmt *format;
+	int ret = 0;
 
 	if (fmt->pad == TP2855_SRC_PAD)
 		return -EINVAL;
@@ -583,19 +678,43 @@ static int tp2855_set_fmt(struct v4l2_subdev *sd,
 	format->code = MEDIA_BUS_FMT_UYVY8_1X16;
 	mutex_unlock(&tp2855->lock);
 
-	dev_dbg(tp2855->dev, 
-	"[%s:%d] format->width: %d, format->height: %d, format->code: %x\n",
-			__func__, __LINE__, format->width, format->height, format->code);
+	dev_dbg(tp2855->dev,
+	"[%s:%d] fmt->pad: %d, format->width: %d, format->height: %d, format->code: %x\n",
+			__func__, __LINE__, fmt->pad, format->width, format->height, format->code);
+
+	//Just for debug
+	{
+		struct v4l2_mbus_framefmt *tmp=&tp2855->format[fmt->pad];
+		dev_dbg(tp2855->dev,
+		"[%s:%d] width: %d, height: %d\n",
+				__func__, __LINE__, tmp->width, tmp->height);
+	}
+
+	if (tp2855->format[fmt->pad].width == 1920 &&
+		tp2855->format[fmt->pad].height == 1080) {
+		ret = tp2854_ahd_1080p_hw_init(tp2855, fmt->pad);
+		if (ret) {
+			dev_err(tp2855->dev,
+			"tp2854_ahd_1080p_hw_init fail(%d)\n", fmt->pad);
+		}
+	} else if (tp2855->format[fmt->pad].width == 1280 &&
+			   tp2855->format[fmt->pad].height == 720) {
+		ret = tp2854_ahd_720p_hw_init(tp2855, fmt->pad);
+		if (ret) {
+			dev_err(tp2855->dev,
+			"tp2854_ahd_720p_hw_init fail(%d)\n", fmt->pad);
+		}
+	}
 
 	fmt->format = *format;
 
-	return 0;
+	return ret;
 }
 
 static int tp2855_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct tp2855_device *tp2855 = to_tp2855(sd);
-	int ret;
+	int ret = 0;
 
 	mutex_lock(&tp2855->lock);
 
@@ -604,13 +723,12 @@ static int tp2855_s_stream(struct v4l2_subdev *sd, int enable)
 		ret = tp2855_hw_init(tp2855);
 		if (ret < 0)
 			goto done;
-		
+
 		ret = tp2855_configure(tp2855);
 		if (ret < 0)
 			goto done;
-		
-	}else {
-		tp2855_power_off(tp2855);
+
+		//tp2855_reg_dump(tp2855);
 	}
 
 done:
@@ -726,6 +844,8 @@ static int tp2855_parse_of(struct tp2855_device *tp2855)
 	struct fwnode_handle *ep;
 	struct device *dev = tp2855->dev;
 	struct device_node *node = NULL;
+	struct device_node *sensor_node;
+	const char *str;
 	int ret;
 #if 0
 	/* GPIOs */
@@ -862,9 +982,9 @@ static const struct dev_pm_ops runtime_pm_ops = {
 static int tp2855_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct tp2855_device *tp2855;
-	int ret;
+	int ret = 0, i = 0;
 
-	dev_err(&client->dev, "tp2855 probe start\n");
+	dev_info(&client->dev, "tp2855 probe start\n");
 
 	tp2855 = devm_kzalloc(&client->dev, sizeof(struct tp2855_device), GFP_KERNEL);
 	if (!tp2855) {
@@ -891,8 +1011,12 @@ static int tp2855_probe(struct i2c_client *client, const struct i2c_device_id *i
 	if(ret < 0) {
 		dev_err(&client->dev, "%s: cannot detect the tp2855 chip, abort!\n", __func__);
 		goto error_hw_cleanup;
-	} else
-		tp2855_power_off(tp2855);
+	} else {
+		//Set default resolution config
+		for (i=0; i<4; i++) {
+			tp2854_ahd_1080p_hw_init(tp2855, i);
+		}
+	}
 
 	ret = tp2855_config_v4l2(tp2855);
 	if (ret)
