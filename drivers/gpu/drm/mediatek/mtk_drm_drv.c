@@ -633,7 +633,8 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	drm->mode_config.funcs = &mtk_drm_mode_config_funcs;
 	drm->mode_config.helper_private = &mtk_drm_mode_config_helpers;
 
-	for (i = 0; i < private->data->mmsys_dev_num; i++) {
+	//for (i = 0; i < private->data->mmsys_dev_num; i++) {
+	for (i = private->data->mmsys_dev_num - 1; i >= 0; i--) {
 		drm->dev_private = private->all_drm_private[i];
 		ret = component_bind_all(private->all_drm_private[i]->dev, drm);
 		if (ret)

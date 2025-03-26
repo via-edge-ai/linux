@@ -6,6 +6,8 @@
 #include <linux/seq_file.h>
 #include <linux/utsname.h>
 
+#include <linux/via_version.h>
+
 static int version_proc_show(struct seq_file *m, void *v)
 {
 	seq_printf(m, linux_proc_banner,
@@ -15,9 +17,15 @@ static int version_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
+static int via_version_proc_show(struct seq_file *m, void *v) {
+	seq_printf(m, "%s\n", VIA_VERSION);
+	return 0;
+}
+
 static int __init proc_version_init(void)
 {
 	proc_create_single("version", 0, NULL, version_proc_show);
+	proc_create_single("via_version", 0, NULL, via_version_proc_show);
 	return 0;
 }
 fs_initcall(proc_version_init);

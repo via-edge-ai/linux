@@ -39,6 +39,8 @@ struct usb_conn_info {
 	struct gpio_desc *vbus_gpiod;
 	int id_irq;
 	int vbus_irq;
+	bool sw_id;
+	int sw_id_value;
 
 	struct power_supply_desc desc;
 	struct power_supply *charger;
@@ -72,7 +74,7 @@ static void usb_conn_detect_cable(struct work_struct *work)
 
 	/* check ID and VBUS */
 	id = info->id_gpiod ?
-		gpiod_get_value_cansleep(info->id_gpiod) : 1;
+		gpiod_get_value_cansleep(info->id_gpiod) : (info->sw_id) ? info->sw_id_value : 1;
 	vbus = info->vbus_gpiod ?
 		gpiod_get_value_cansleep(info->vbus_gpiod) : id;
 
@@ -83,7 +85,7 @@ static void usb_conn_detect_cable(struct work_struct *work)
 	else
 		role = USB_ROLE_NONE;
 
-	dev_dbg(info->dev, "role %s -> %s, gpios: id %d, vbus %d\n",
+	dev_info(info->dev, "role %s -> %s, gpios: id %d, vbus %d\n",
 		usb_role_string(info->last_role), usb_role_string(role), id, vbus);
 
 	if (info->last_role == role) {
@@ -173,6 +175,7 @@ static int usb_conn_psy_register(struct usb_conn_info *info)
 
 static int usb_conn_probe(struct platform_device *pdev)
 {
+	struct device_node *node = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
 	struct usb_conn_info *info;
 	bool need_vbus = true;
@@ -192,8 +195,15 @@ static int usb_conn_probe(struct platform_device *pdev)
 		return PTR_ERR(info->vbus_gpiod);
 
 	if (!info->id_gpiod && !info->vbus_gpiod) {
-		dev_err(dev, "failed to get gpios\n");
-		return -ENODEV;
+		info->sw_id = of_property_read_bool(node, "sw-id");
+		if (info->sw_id) {
+			of_property_read_u32(node, "sw-id-value",
+			     &info->sw_id_value);
+			dev_info(dev, "use sw-id value:%d\n", info->sw_id_value);
+		} else {
+			dev_err(dev, "failed to get gpios\n");
+			return -ENODEV;
+		}
 	}
 
 	if (info->id_gpiod)

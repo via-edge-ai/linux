@@ -479,7 +479,7 @@
 		clock-frequency = <13000000>;
 	};
 
-	soc {
+	soc: soc {
 		#address-cells = <2>;
 		#size-cells = <2>;
 		compatible = "simple-bus";
@@ -577,10 +577,10 @@
 					pinmux = <PINMUX_GPIO33__FUNC_HDMITX20_CEC>;
 					bias-disable;
 				};
-				pins-5vctrl {
+				/* pins-5vctrl {
 					pinmux = <PINMUX_GPIO31__FUNC_HDMITX20_PWR5V>;
 					bias-disable;
-				};
+				}; */
 			};
 		};
 
@@ -1318,6 +1318,11 @@
 			status = "disabled";
 		};
 
+		pwmleds: pwmleds {
+			compatible = "mediatek,pwm-leds";
+			status = "disabled";
+		};
+
 		spi1: spi@11010000 {
 			compatible = "mediatek,mt8195-spi",
 				     "mediatek,mt6765-spi";
@@ -1461,14 +1466,15 @@
 				};
 			};
 			mtl_tx_setup: tx-queues-config {
-				snps,tx-queues-to-use = <4>;
+				//snps,tx-queues-to-use = <4>;
+				snps,tx-queues-to-use = <1>;
 				snps,tx-sched-wrr;
 				queue0 {
 					snps,weight = <0x10>;
 					snps,dcb-algorithm;
 					snps,priority = <0x0>;
 				};
-				queue1 {
+				/*queue1 {
 					snps,weight = <0x11>;
 					snps,dcb-algorithm;
 					snps,priority = <0x1>;
@@ -1482,7 +1488,7 @@
 					snps,weight = <0x13>;
 					snps,dcb-algorithm;
 					snps,priority = <0x3>;
-				};
+				};*/
 			};
 		};
 

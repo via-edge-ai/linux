@@ -40,6 +40,20 @@
 #define MAX_BD_NUM          1024
 #define MSDC_NR_CLOCKS      3
 
+/*RPMB*/
+/*--------------------------------------------------------------------------*/
+#include <crypto/hash.h>
+#include <linux/scatterlist.h>
+#include <linux/mmc/card.h>
+#include <linux/mmc/host.h>
+#include <linux/mmc/mmc.h>
+#include <linux/mmc/sd.h>
+#include <uapi/linux/mmc/ioctl.h>
+#include "../drivers/mmc/core/core.h"
+#include "../drivers/mmc/core/mmc_ops.h"
+#include "../drivers/mmc/core/queue.h"
+#include <linux/rpmb.h>
+/*--------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------*/
 /* Common Definition                                                        */
 /*--------------------------------------------------------------------------*/
@@ -431,6 +445,7 @@ struct msdc_delay_phase {
 struct msdc_host {
 	struct device *dev;
 	const struct mtk_mmc_compatible *dev_comp;
+	struct mmc_host *mmc;	/* mmc structure */
 	int cmd_rsp;
 
 	spinlock_t lock;
@@ -488,6 +503,8 @@ struct msdc_host {
 	struct msdc_tune_para def_tune_para; /* default tune setting */
 	struct msdc_tune_para saved_tune_para; /* tune result of CMD21/CMD19 */
 	struct cqhci_host *cq_host;
+	/* for sysfs to read rpmb */
+	struct kobject rpmb_kobj;
 
 	struct regulator *dvfsrc_vcore_power;
 	u32 req_vcore;
@@ -635,7 +652,719 @@ static const struct of_device_id msdc_of_ids[] = {
 	{}
 };
 MODULE_DEVICE_TABLE(of, msdc_of_ids);
+/*RPMB*/
+/*--------------------------------------------------------------------------*/
 
+#define RPMB_REQ               1       /* RPMB request mark */
+#define RPMB_RESP              (1 << 1)/* RPMB response mark */
+#define RPMB_AVAILABLE_SECTORS 8       /* 4K page size */
+
+#define RPMB_TYPE_BEG          510
+#define RPMB_RES_BEG           508
+#define RPMB_BLKS_BEG          506
+#define RPMB_ADDR_BEG          504
+#define RPMB_WCOUNTER_BEG      500
+
+#define RPMB_NONCE_BEG         484
+#define RPMB_DATA_BEG          228
+#define RPMB_MAC_BEG           196
+
+#define DEFAULT_HANDLES_NUM (64)
+#define MAX_OPEN_SESSIONS (0xffffffffU - 1)
+
+#define RPMB_SZ_MAC   32U
+#define RPMB_SZ_DATA  256U
+#define RPMB_SZ_STUFF 196U
+#define RPMB_SZ_NONCE 16U
+#define RPMB_SZ_KEY   32U
+#define RPMB_SZ_CAL_HMAC 284UL
+#define RPMB_SZ_FRAME 512UL
+#define MAX_RPMB_TRANSFER_BLK (16U)
+#define MAX_RPMB_REQUEST_SIZE (512U*MAX_RPMB_TRANSFER_BLK) /* 8KB */
+
+unsigned char test_rpmb_key[32] = {
+	0x63, 0x35, 0x66, 0x62, 0x32, 0x61, 0x64, 0x63,
+	0x33, 0x35, 0x61, 0x30, 0x30, 0x37, 0x63, 0x66,
+	0x62, 0x38, 0x66, 0x34, 0x32, 0x63, 0x66, 0x62,
+	0x63, 0x64, 0x66, 0x38, 0x36, 0x66, 0x39, 0x65,
+};
+
+struct rpmb_ioc_param {
+	unsigned char *keybytes;
+	unsigned char *databytes;
+	unsigned int  data_len;
+	unsigned short addr;
+	unsigned char *hmac;
+	unsigned int hmac_len;
+};
+
+struct s_rpmb {
+	unsigned char stuff[RPMB_SZ_STUFF];
+	unsigned char mac[RPMB_SZ_MAC];
+	unsigned char data[RPMB_SZ_DATA];
+	unsigned char nonce[RPMB_SZ_NONCE];
+	unsigned int write_counter;
+	unsigned short address;
+	unsigned short block_count;
+	unsigned short result;
+	unsigned short request;
+};
+struct emmc_rpmb_blk_data {
+	struct device	*parent;
+	struct gendisk	*disk;
+	struct mmc_queue queue;
+	struct list_head part;
+	struct list_head rpmbs;
+
+	unsigned int	flags;
+	unsigned int	usage;
+	unsigned int	read_only;
+	unsigned int	part_type;
+	unsigned int	reset_done;
+
+	/*
+	 * Only set in main mmc_blk_data associated
+	 * with mmc_card with dev_set_drvdata, and keeps
+	 * track of the current selected device partition.
+	 */
+	unsigned int	part_curr;
+	struct device_attribute force_ro;
+	struct device_attribute power_ro_lock;
+	int area_type;
+};
+
+struct emmc_rpmb_data {
+	struct device dev;
+	struct cdev *chrdev;
+	int id;
+	unsigned int part_index;
+	struct emmc_rpmb_blk_data *md;
+	struct list_head node;
+};
+
+struct emmc_rpmb_req {
+	__u16 type;                     /* RPMB request type */
+	__u16 *result;                  /* response or request result */
+	__u16 blk_cnt;                  /* Number of blocks(half sector 256B) */
+	__u16 addr;                     /* data address */
+	__u32 *wc;                      /* write counter */
+	__u8 *nonce;                    /* Ramdom number */
+	__u8 *data;                     /* Buffer of the user data */
+	__u8 *mac;                      /* Message Authentication Code */
+	__u8 *data_frame;
+};
+
+enum {
+	RPMB_SUCCESS = 0,
+	RPMB_HMAC_ERROR,
+	RPMB_RESULT_ERROR,
+	RPMB_WC_ERROR,
+	RPMB_NONCE_ERROR,
+	RPMB_ALLOC_ERROR,
+	RPMB_TRANSFER_NOT_COMPLETE,
+};
+
+void rpmb_req_copy_data_for_hmac(u8 *buf, struct rpmb_frame *f)
+{
+	u32 size;
+
+	/*
+	 * Copy below members for HMAC calculation
+	 * one by one with specifically assigning
+	 * buf to each member to pass buffer-overrun checker.
+	 *
+	 * __u8   data[256];
+	 * __u8   nonce[16];
+	 * __be32 write_counter;
+	 * __be16 addr;
+	 * __be16 block_count;
+	 * __be16 result;
+	 * __be16 req_resp;
+	 */
+
+	memcpy(buf, f->data, RPMB_SZ_DATA);
+	buf += RPMB_SZ_DATA;
+
+	size = sizeof(f->nonce);
+	memcpy(buf, f->nonce, size);
+	buf += size;
+
+	size = sizeof(f->write_counter);
+	memcpy(buf, &f->write_counter, size);
+	buf += size;
+
+	size = sizeof(f->addr);
+	memcpy(buf, &f->addr, size);
+	buf += size;
+
+	size = sizeof(f->block_count);
+	memcpy(buf, &f->block_count, size);
+	buf += size;
+
+	size = sizeof(f->result);
+	memcpy(buf, &f->result, size);
+	buf += size;
+
+	size = sizeof(f->req_resp);
+	memcpy(buf, &f->req_resp, size);
+	buf += size;
+}
+
+/*
+ * CHECK THIS!!! Copy from block.c mmc_blk_part_switch.
+ * Since it is static inline function, we cannot extern to use it.
+ * For syncing block data, this is the only way.
+ */
+int emmc_rpmb_switch(struct mmc_card *card, struct emmc_rpmb_blk_data *md)
+{
+	int ret;
+	struct emmc_rpmb_blk_data *main_md = dev_get_drvdata(&card->dev);
+
+	if (main_md->part_curr == md->part_type)
+		return 0;
+
+	if (md->part_type == EXT_CSD_PART_CONFIG_ACC_RPMB) {
+		if (card->ext_csd.cmdq_en) {
+			ret = mmc_cmdq_disable(card);
+			if (ret) {
+				printk(KERN_CRIT "CMDQ disabled failed!(%d)\n", ret);
+				return ret;
+			}
+		}
+	}
+
+	if (mmc_card_mmc(card)) {
+		u8 part_config = card->ext_csd.part_config;
+
+		part_config &= ~EXT_CSD_PART_CONFIG_ACC_MASK;
+		part_config |= md->part_type;
+
+		ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
+				 EXT_CSD_PART_CONFIG, part_config,
+				 card->ext_csd.part_time);
+		if (ret)
+			return ret;
+
+		card->ext_csd.part_config = part_config;
+	}
+
+	/* enable cmdq at user partition */
+	if (main_md->part_curr == EXT_CSD_PART_CONFIG_ACC_RPMB) {
+		if (card->reenable_cmdq && !card->ext_csd.cmdq_en) {
+			ret = mmc_cmdq_enable(card);
+			if (ret)
+				pr_notice("%s enable CMDQ error %d,so just work without CMDQ\n",
+					mmc_hostname(card->host), ret);
+		}
+	}
+
+	main_md->part_curr = md->part_type;
+	return 0;
+}
+static int emmc_rpmb_send_command(
+	struct mmc_card *card,
+	u8 *buf,
+	__u16 blks,
+	__u16 type,
+	u8 req_type
+	)
+{
+	struct mmc_request mrq = {NULL};
+	struct mmc_command cmd = {0};
+	struct mmc_command sbc = {0};
+	struct mmc_data data = {0};
+	struct scatterlist sg;
+	u8 *transfer_buf = NULL;
+
+	if (blks == 0) {
+		printk(KERN_CRIT "%s: Invalid blks: 0\n", __func__);
+		return -EINVAL;
+	}
+
+	mrq.sbc = &sbc;
+	mrq.cmd = &cmd;
+	mrq.data = &data;
+	mrq.stop = NULL;
+	transfer_buf = kzalloc(512 * blks, GFP_KERNEL);
+	if (!transfer_buf)
+		return -ENOMEM;
+
+	/*
+	 * set CMD23
+	 */
+	sbc.opcode = MMC_SET_BLOCK_COUNT;
+	sbc.arg = blks;
+	if ((req_type == RPMB_REQ && type == RPMB_WRITE_DATA) ||
+					type == RPMB_PROGRAM_KEY)
+		sbc.arg |= 1 << 31;
+	sbc.flags = MMC_RSP_R1 | MMC_CMD_AC;
+
+	/*
+	 * set CMD25/18
+	 */
+	sg_init_one(&sg, transfer_buf, 512 * blks);
+	if (req_type == RPMB_REQ) {
+		cmd.opcode = MMC_WRITE_MULTIPLE_BLOCK;
+		sg_copy_from_buffer(&sg, 1, buf, 512 * blks);
+		data.flags |= MMC_DATA_WRITE;
+	} else {
+		cmd.opcode = MMC_READ_MULTIPLE_BLOCK;
+		data.flags |= MMC_DATA_READ;
+	}
+
+	cmd.arg = 0;
+	cmd.flags = MMC_RSP_R1 | MMC_CMD_ADTC;
+	data.blksz = 512;
+	data.blocks = blks;
+	data.sg = &sg;
+	data.sg_len = 1;
+
+	mmc_set_data_timeout(&data, card);
+
+	mmc_wait_for_req(card->host, &mrq);
+
+	if (req_type != RPMB_REQ)
+		sg_copy_to_buffer(&sg, 1, buf, 512 * blks);
+
+	kfree(transfer_buf);
+
+	if (cmd.error)
+		return cmd.error;
+	if (data.error)
+		return data.error;
+
+	return 0;
+}
+
+int emmc_rpmb_req_start(struct mmc_card *card, struct emmc_rpmb_req *req)
+{
+	int err = 0;
+	u16 blks = req->blk_cnt;
+	u16 type = req->type;
+	u8 *data_frame = req->data_frame;
+
+	/* MSG(INFO, "%s, start\n", __func__);    */
+
+	/*
+	 * STEP 1: send request to RPMB partition.
+	 */
+	if (type == RPMB_WRITE_DATA)
+		err = emmc_rpmb_send_command(card, data_frame,
+						blks, type, RPMB_REQ);
+	else
+		err = emmc_rpmb_send_command(card, data_frame,
+						1, type, RPMB_REQ);
+
+	if (err) {
+		printk(KERN_CRIT "%s step 1, request failed (%d)\n", __func__, err);
+		goto out;
+	}
+
+	/*
+	 * STEP 2: check write result. Only for WRITE_DATA or Program key.
+	 */
+	memset(data_frame, 0, 512 * blks);
+
+	if (type == RPMB_WRITE_DATA || type == RPMB_PROGRAM_KEY) {
+		data_frame[RPMB_TYPE_BEG + 1] = RPMB_RESULT_READ;
+		err = emmc_rpmb_send_command(card, data_frame,
+						1, RPMB_RESULT_READ, RPMB_REQ);
+		if (err) {
+			printk(KERN_CRIT "%s step 2, request result failed (%d)\n",
+				__func__, err);
+			goto out;
+		}
+	}
+
+	/*
+	 * STEP 3: get response from RPMB partition
+	 */
+	data_frame[RPMB_TYPE_BEG] = 0;
+	data_frame[RPMB_TYPE_BEG + 1] = type;
+
+	if (type == RPMB_READ_DATA)
+		err = emmc_rpmb_send_command(card, data_frame, blks,
+						type, RPMB_RESP);
+	else
+		err = emmc_rpmb_send_command(card, data_frame, 1,
+						type, RPMB_RESP);
+
+	if (err)
+		printk(KERN_CRIT "%s step 3, response failed (%d)\n", __func__, err);
+
+	/* MSG(INFO, "%s, end\n", __func__);    */
+
+out:
+	return err;
+
+}
+
+int emmc_rpmb_req_handle(struct mmc_card *card, struct emmc_rpmb_req *rpmb_req)
+{
+	struct emmc_rpmb_blk_data *md = NULL, *part_md;
+	int ret;
+	struct emmc_rpmb_data *rpmb;
+	struct list_head *pos;
+
+	part_md = vzalloc(sizeof(struct emmc_rpmb_blk_data));
+	if (!part_md)
+		return -ENOMEM;
+	/* rpmb_dump_frame(rpmb_req->data_frame); */
+	md = dev_get_drvdata(&card->dev);
+	list_for_each(pos, &md->rpmbs) {
+		rpmb = list_entry(pos, struct emmc_rpmb_data, node);
+		if (rpmb) {
+			part_md->part_type = EXT_CSD_PART_CONFIG_ACC_RPMB;
+			break;
+		}
+	}
+
+	/*  MSG(INFO, "%s start.\n", __func__); */
+
+	mmc_get_card(card, NULL);
+
+	/*
+	 * STEP1: Switch to RPMB partition.
+	 */
+	ret = emmc_rpmb_switch(card, part_md);
+	if (ret) {
+		printk(KERN_CRIT "%s emmc_rpmb_switch failed. (%x)\n", __func__, ret);
+		goto error;
+	}
+
+	/*
+	 * STEP2: Start request. (CMD23, CMD25/18 procedure)
+	 */
+	ret = emmc_rpmb_req_start(card, rpmb_req);
+	if (ret) {
+		printk(KERN_CRIT "%s emmc_rpmb_req_start failed!! (%x)\n",
+			__func__, ret);
+		goto error;
+	}
+
+	/* MSG(INFO, "%s end.\n", __func__); */
+
+error:
+	ret = emmc_rpmb_switch(card, dev_get_drvdata(&card->dev));
+	if (ret)
+		printk(KERN_CRIT "%s emmc_rpmb_switch main failed. (%x)\n",
+			__func__, ret);
+
+	mmc_put_card(card, NULL);
+
+	/* rpmb_dump_frame(rpmb_req->data_frame); */
+	vfree(part_md);
+	return ret;
+}
+
+int rpmb_req_ioctl_read_data_emmc(struct mmc_card *card,
+	struct rpmb_ioc_param *param)
+{
+	struct emmc_rpmb_req rpmb_req;
+	/* if we put a large static buffer here, it will build fail.
+	 * rpmb_frame[MAX_RPMB_TRANSFER_BLK];
+	 * so I use dynamic alloc.
+	 */
+	struct s_rpmb *rpmb_frame;
+	u32 tran_size, left_size = param->data_len;
+	u16 iCnt, total_blkcnt, tran_blkcnt, left_blkcnt;
+	u16 blkaddr;
+	u8 nonce[RPMB_SZ_NONCE] = {0};
+	u8 *dataBuf, *dataBuf_start;
+	int i, ret = 0;
+	u32 size_for_hmac;
+	printk(KERN_DEBUG "%s start!!!\n", __func__);
+
+	i = 0;
+	tran_blkcnt = 0;
+	dataBuf = NULL;
+	dataBuf_start = NULL;
+
+	left_blkcnt = total_blkcnt = ((param->data_len % RPMB_SZ_DATA) ?
+					(param->data_len / RPMB_SZ_DATA + 1) :
+					(param->data_len / RPMB_SZ_DATA));
+
+	blkaddr = param->addr;
+
+	while (left_blkcnt) {
+		if (left_blkcnt >= MAX_RPMB_TRANSFER_BLK)
+			tran_blkcnt = MAX_RPMB_TRANSFER_BLK;
+		else
+			tran_blkcnt = left_blkcnt;
+
+		printk(KERN_DEBUG "%s, left_blkcnt=%x, tran_blkcnt=%x\n", __func__,
+			left_blkcnt, tran_blkcnt);
+
+		/*
+		 * initial buffer. (since HMAC computation of multi block needs
+		 * multi buffer, pre-alloced it)
+		 */
+		rpmb_frame =
+			kzalloc(tran_blkcnt * sizeof(struct s_rpmb) + tran_blkcnt * 512, 0);
+		if (rpmb_frame == NULL)
+			return RPMB_ALLOC_ERROR;
+
+		dataBuf_start = dataBuf = (u8 *)(rpmb_frame + tran_blkcnt);
+
+		get_random_bytes(nonce, RPMB_SZ_NONCE);
+
+		/*
+		 * Prepare request.
+		 */
+		rpmb_req.type = RPMB_READ_DATA;
+		rpmb_req.blk_cnt = tran_blkcnt;
+		rpmb_req.data_frame = (u8 *)rpmb_frame;
+
+		/*
+		 * Prepare request read data frame. only need addr and nonce.
+		 */
+		rpmb_frame->request = cpu_to_be16p(&rpmb_req.type);
+		rpmb_frame->address = cpu_to_be16p(&blkaddr);
+		memcpy(rpmb_frame->nonce, nonce, RPMB_SZ_NONCE);
+
+		ret = emmc_rpmb_req_handle(card, &rpmb_req);
+		if (ret) {
+			printk(KERN_CRIT "%s, emmc_rpmb_req_handle IO error!!!(%x)\n",
+				__func__, ret);
+			break;
+		}
+
+		/*
+		 * STEP 3, retrieve every data frame one by one.
+		 */
+
+		/* size for hmac calculation: 512 - 228 = 284 */
+		size_for_hmac =
+			sizeof(struct rpmb_frame) - offsetof(struct rpmb_frame, data);
+
+		for (iCnt = 0; iCnt < tran_blkcnt; iCnt++) {
+
+			if (left_size >= RPMB_SZ_DATA)
+				tran_size = RPMB_SZ_DATA;
+			else
+				tran_size = left_size;
+
+			/*
+			 * dataBuf used for hmac calculation. we need to
+			 * aggregate each block's data till to type field.
+			 * each block has 284 bytes need to aggregate.
+			 */
+			rpmb_req_copy_data_for_hmac(dataBuf,
+				(struct rpmb_frame *) &rpmb_frame[iCnt]);
+
+			dataBuf += size_for_hmac;
+
+			/*
+			 * sorry, I shouldn't copy read data to user's buffer
+			 * now, it should be later
+			 * after checking no problem,
+			 * but for convenience...you know...
+			 */
+			memcpy(
+				param->databytes + i * MAX_RPMB_TRANSFER_BLK * RPMB_SZ_DATA +
+				(iCnt * RPMB_SZ_DATA),
+				rpmb_frame[iCnt].data,
+				tran_size);
+			left_size -= tran_size;
+		}
+
+		iCnt--;
+
+		/*
+		 * Authenticate response read data frame.
+		 */
+
+		if (memcmp(nonce, rpmb_frame[iCnt].nonce, RPMB_SZ_NONCE) != 0) {
+			printk(KERN_CRIT "%s, nonce compare error!!!\n", __func__);
+			ret = RPMB_NONCE_ERROR;
+			break;
+		}
+
+		if (rpmb_frame[iCnt].result) {
+			printk(KERN_CRIT "%s, result error!!! (%x)\n", __func__,
+				cpu_to_be16p(&rpmb_frame[iCnt].result));
+			ret = RPMB_RESULT_ERROR;
+			break;
+		}
+
+		blkaddr += tran_blkcnt;
+		left_blkcnt -= tran_blkcnt;
+		i++;
+		kfree(rpmb_frame);
+	};
+
+	if (ret)
+		kfree(rpmb_frame);
+
+	if (left_blkcnt || left_size) {
+		printk(KERN_CRIT "left_blkcnt or left_size is not empty!!!!!!\n");
+		return RPMB_TRANSFER_NOT_COMPLETE;
+	}
+
+	printk(KERN_DEBUG "%s end!!!\n", __func__);
+
+	return ret;
+
+}
+
+struct msdc_host *mtk_msdc_host[3];
+int rpmb_mac_reader(unsigned char *mac)
+{
+	struct rpmb_ioc_param param;
+	unsigned char *data;
+	int ret;
+	if (mtk_msdc_host[0] == NULL) {
+		printk(KERN_CRIT "mtk_msdc_host[0] does`nt alloc!!\n");
+		return -1;
+	}
+	data = kmalloc(256, GFP_KERNEL);
+	param.keybytes = kmalloc(32, GFP_KERNEL);
+	/* key is a random data */
+	memcpy(param.keybytes, test_rpmb_key, 32);
+	param.databytes = data;
+	param.data_len = 6;
+	param.addr = 256; /* rpmb second block */
+	ret = rpmb_req_ioctl_read_data_emmc(mtk_msdc_host[0]->mmc->card, &param);
+	if (ret) {
+		printk(KERN_CRIT "RPMB read failed(%d)\n", ret);
+		return -1;
+	}
+	/* data copy */
+	memcpy(mac, param.databytes, 6);
+
+	/* debug */
+	/*
+	for(ret = 0; ret < 6; ret ++) {
+		printk(KERN_CRIT "%02x ", mac[ret]);
+	}
+	*/
+	kfree(data);
+	kfree(param.keybytes);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(rpmb_mac_reader);
+static ssize_t test_read_rpmb(struct msdc_host *host,
+				   __user char *buf)
+{
+	struct rpmb_ioc_param param;
+
+	int ret = 0;
+	if (mtk_msdc_host[0] == NULL)
+		return sprintf(buf, "mtk_msdc_host[0] does`nt alloc!!\n");
+
+	param.databytes = kmalloc(256, GFP_KERNEL);
+	param.keybytes = kmalloc(32, GFP_KERNEL);
+	/* key is a random data */
+	memcpy(param.keybytes, test_rpmb_key, 32);
+	param.data_len = 6;
+	param.addr = 256;
+
+	if (mtk_msdc_host[0]->mmc == NULL) {
+		printk(KERN_CRIT "mtk_msdc_host[0]->mmc NULL !!!!\n");
+		return sprintf(buf, "Failed !!!\n");
+	}
+
+	if (mtk_msdc_host[0]->mmc->card == NULL) {
+		printk(KERN_CRIT "mtk_msdc_host[0]->mmc->card NULL !!!!\n");
+		return sprintf(buf, "Failed !!!\n");
+	} else
+		ret = rpmb_req_ioctl_read_data_emmc(mtk_msdc_host[0]->mmc->card, &param);
+
+	if (ret)
+		return sprintf(buf, "RPMB read failed(%d)\n", ret);
+
+	return sprintf(buf, "%02x %02x %02x %02x %02x %02x\n",
+				param.databytes[0], param.databytes[1],
+				param.databytes[2], param.databytes[3],
+				param.databytes[4], param.databytes[5]);
+}
+
+static ssize_t test_read_rpmb_addr(struct msdc_host *host,
+				const char __user *buf, size_t count)
+{
+	int offset, len, ret, i;
+	struct rpmb_ioc_param param;
+
+	if (sscanf(buf, "%d %d", &offset, &len) != 2) {
+		printk(KERN_CRIT "intput <offset> <len>\n");
+		return -1;
+	}
+
+	if (mtk_msdc_host[0] == NULL) {
+		printk(KERN_CRIT  "mtk_msdc_host[0] does`nt alloc!!\n");
+		return -1;
+	}
+
+	param.databytes = kmalloc(256, GFP_KERNEL);
+	param.keybytes = kmalloc(32, GFP_KERNEL);
+	/* key is a random data */
+	memcpy(param.keybytes, test_rpmb_key, 32);
+	param.data_len = len;
+	param.addr = offset;
+
+	if (mtk_msdc_host[0]->mmc->card == NULL) {
+		printk(KERN_CRIT "mtk_msdc_host[0]->mmc->card NULL !!!!\n");
+		return -1;
+	} else
+		ret = rpmb_req_ioctl_read_data_emmc(mtk_msdc_host[0]->mmc->card, &param);
+
+	if (ret) {
+		printk(KERN_CRIT "RPMB read failed(%d)\n", ret);
+		return -1;
+	}
+
+	for (i=0; i<len; i++)
+		printk(KERN_CRIT "0x%02x ", param.databytes[i]);
+
+	return count;
+}
+
+static struct kset *global_rpmb_kset;
+struct rpmb_sysfs_entry {
+	struct attribute attr;
+	ssize_t (*show)(struct msdc_host *, char *);
+	ssize_t (*store)(struct msdc_host *, const char *, size_t);
+};
+static ssize_t rpmb_sysfs_show(struct kobject *kobj,
+	struct attribute *attr, char *buf)
+{
+	struct rpmb_sysfs_entry *entry = container_of(attr,
+		struct rpmb_sysfs_entry, attr);
+	struct msdc_host *di = container_of(kobj,
+		struct msdc_host, rpmb_kobj);
+	if (!entry->show)
+		return -EIO;
+	return entry->show(di, buf);
+}
+
+static ssize_t rpmb_sysfs_store(struct kobject *kobj,
+			struct attribute *attr, const char *buf, size_t len)
+{
+	struct rpmb_sysfs_entry *entry = container_of(attr,
+		struct rpmb_sysfs_entry, attr);
+	struct msdc_host *di = container_of(kobj,
+		struct msdc_host, rpmb_kobj);
+	if (!entry->store)
+		return -EIO;
+	return entry->store(di, buf, len);
+}
+
+static const struct sysfs_ops rpmb_sysfs_ops = {
+	.show = rpmb_sysfs_show,
+	.store = rpmb_sysfs_store,
+};
+static struct rpmb_sysfs_entry rpmb_data =
+	__ATTR(data, 0644, test_read_rpmb, test_read_rpmb_addr);
+static struct attribute *rpmb_read_en_st[] = {
+	&rpmb_data.attr,
+	NULL,
+};
+static struct kobj_type rpmb_read_ktype = {
+	.sysfs_ops = &rpmb_sysfs_ops,
+	.default_attrs = rpmb_read_en_st,
+};
+/*--------------------------------------------------------------------------*/
 static void sdr_set_bits(void __iomem *reg, u32 bs)
 {
 	u32 val = readl(reg);
@@ -2969,6 +3698,26 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	pm_runtime_enable(host->dev);
 	ret = mmc_add_host(mmc);
 
+	/* rpmb ================================================= */
+	if (of_property_read_bool(pdev->dev.of_node, "emmc-rpmb")) {
+		mtk_msdc_host[0] = kmalloc(sizeof(struct msdc_host), GFP_KERNEL);
+		mtk_msdc_host[0] = host;
+		mtk_msdc_host[0]->mmc = mmc;
+		// sysfs
+		if (global_rpmb_kset == NULL) {
+			global_rpmb_kset = kset_create_and_add("rpmb", NULL, NULL);
+			if (!global_rpmb_kset) {
+				return -ENOMEM;
+			}
+		host->rpmb_kobj.kset = global_rpmb_kset;
+		ret = kobject_init_and_add(&host->rpmb_kobj,
+			&rpmb_read_ktype,
+			NULL, "rpmb");
+		if (ret < 0)
+			printk("failed to create sysfs entry\n");
+		}
+	}
+	/* ====================================================== */
 	if (ret)
 		goto end;
 
